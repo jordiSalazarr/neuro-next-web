@@ -24,7 +24,13 @@ export interface Patient {
 }
 
 export type CurrentEvaluation = {
-  id: string
+  id: String,
+  createdAt: Date,
+currentStatus:String
+patientAge:Number,
+patientName:String
+specialistId:String
+specialistMail:String
 
 }
 

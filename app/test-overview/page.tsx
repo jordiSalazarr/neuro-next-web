@@ -1,7 +1,7 @@
-import {ResultsScreen} from '../../components/ResultsScreen'
+import EvaluationDetails from "@/components/ResultsScreen";
 
 const Page = () => {
-  return (<ResultsScreen />);
+  return (<EvaluationDetails />);
 };
 
 export default Page;

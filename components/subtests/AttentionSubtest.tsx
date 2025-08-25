@@ -6,6 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import type { SubtestProps } from "@/types"
+import axios from "axios"
+import { useEvaluationStore } from "@/stores/evaluation"
 
 const ALL_LETTERS = [
   "A",
@@ -58,6 +60,7 @@ export function AttentionSubtest({ onComplete, onPause }: SubtestProps) {
   const [targetStartTime, setTargetStartTime] = useState<number>(0)
   const [reactionTimes, setReactionTimes] = useState<number[]>([])
   const [waitingForClick, setWaitingForClick] = useState(false)
+  const currentEvaluarionID = useEvaluationStore(state=>state.currentEvaluation?.id)
 
   const generateLetterMatrix = useCallback(() => {
     const matrix: LetterCell[] = []
@@ -146,7 +149,7 @@ export function AttentionSubtest({ onComplete, onPause }: SubtestProps) {
     setTargetIndex((prev) => prev + 1)
   }
 
-  const completeSubtest = () => {
+  const completeSubtest = async () => {
     setPhase("completed")
 
     const avgReactionTime =
@@ -155,7 +158,15 @@ export function AttentionSubtest({ onComplete, onPause }: SubtestProps) {
     const totalClicks = correctHits + falseAlarms
     const accuracy = totalClicks > 0 ? (correctHits / totalClicks) * 100 : 0
     const timeSpent = startTime ? (Date.now() - startTime.getTime()) / 1000 : 0
-
+    const res = await axios.post(`${process.env.NEXT_PUBLIC_API_BASE_URL}/v1/evaluations/letter-cancellation`,{
+       TotalTargets: targetIndex,
+       Correct: correctHits,
+       Errors: falseAlarms,
+       TimeInSecs: 150,
+       EvaluationID: currentEvaluarionID,
+      // averageReactionTime: Math.round(avgReactionTime), TODO: this metric could be very interesting
+    })
+    console.log(res)
     onComplete({
       startTime: startTime!,
       endTime: new Date(),
@@ -170,6 +181,14 @@ export function AttentionSubtest({ onComplete, onPause }: SubtestProps) {
         reactionTimes,
       },
     })
+try {
+  
+} catch (error) {
+  
+}
+
+
+  
   }
 
   const formatTime = (seconds: number) => {

@@ -10,6 +10,9 @@ import { Input } from "@/components/ui/input"
 import { Progress } from "@/components/ui/progress"
 import { Clock, CheckCircle, XCircle } from "lucide-react"
 import type { SubtestProps } from "@/types"
+import axios from "axios"
+import { useEvaluationStore } from "@/stores/evaluation"
+import { useRouter } from "next/navigation"
 
 const CATEGORIES = [
   {
@@ -29,7 +32,7 @@ const CATEGORIES = [
   },
 ]
 
-const TEST_DURATION = 60 // 60 segundos
+const TEST_DURATION = 5 // 60 segundos
 
 export function LanguageSubtest({ onComplete, onPause }: SubtestProps) {
   const [phase, setPhase] = useState<"instructions" | "active" | "completed">("instructions")
@@ -41,6 +44,8 @@ export function LanguageSubtest({ onComplete, onPause }: SubtestProps) {
   const [invalidWords, setInvalidWords] = useState<string[]>([])
   const [startTime, setStartTime] = useState<Date | null>(null)
   const [wordTimestamps, setWordTimestamps] = useState<{ word: string; timestamp: number }[]>([])
+  const currentEvaluationID = useEvaluationStore(state=>state.currentEvaluation?.id)
+  const router = useRouter()
 
   // Timer para el test
   useEffect(() => {
@@ -245,8 +250,9 @@ export function LanguageSubtest({ onComplete, onPause }: SubtestProps) {
     setCurrentWord("")
   }
 
-  const completeSubtest = () => {
-    setPhase("completed")
+  const completeSubtest = async() => {
+    try {
+       setPhase("completed")
 
     const timeSpent = startTime ? (Date.now() - startTime.getTime()) / 1000 : 0
     const totalWords = validWords.length + repeatedWords.length + invalidWords.length
@@ -254,7 +260,16 @@ export function LanguageSubtest({ onComplete, onPause }: SubtestProps) {
 
     // Calcular palabras por minuto
     const wordsPerMinute = (validWords.length / (TEST_DURATION - timeRemaining)) * 60
-
+const res = await axios.post(`${process.env.NEXT_PUBLIC_API_BASE_URL}/v1/evaluations/language-fluency`,{
+  EvaluationID:currentEvaluationID,
+  Category: CATEGORIES[currentCategory].name,
+  Words :[...validWords,...invalidWords],
+  Duration: TEST_DURATION,
+  Language: "es",
+  Proficiency: "nativo",
+  TotalTime: Math.round(timeSpent)
+})
+console.log(res)
     onComplete({
       startTime: startTime!,
       endTime: new Date(),
@@ -272,6 +287,11 @@ export function LanguageSubtest({ onComplete, onPause }: SubtestProps) {
         wordTimestamps,
       },
     })
+    router.push("/finish-test")
+    } catch (error) {
+      console.log(error)
+    }
+   
   }
 
   const formatTime = (seconds: number) => {
@@ -345,7 +365,7 @@ export function LanguageSubtest({ onComplete, onPause }: SubtestProps) {
               </Button>
             </form>
 
-            <div className="grid grid-cols-3 gap-4">
+            {/* <div className="grid grid-cols-3 gap-4">
               <Card className="bg-green-50">
                 <CardContent className="p-4">
                   <div className="flex items-center gap-2 mb-2">
@@ -393,7 +413,7 @@ export function LanguageSubtest({ onComplete, onPause }: SubtestProps) {
                   </div>
                 </CardContent>
               </Card>
-            </div>
+            </div> */}
 
             <div className="text-center">
               <Button variant="outline" onClick={onPause}>
