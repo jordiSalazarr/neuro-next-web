@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button"
 import { Card, CardHeader, CardContent, CardFooter } from "@/components/ui/card"
 import { useEffect } from 'react'
 import { useAuthStore } from '@/stores/auth'
+import axios from 'axios'
+import { useRouter } from 'next/navigation'
 
 function decodeJwt<T = any>(token: string): T | null {
   try {
@@ -15,8 +17,11 @@ function decodeJwt<T = any>(token: string): T | null {
     return null
   }
 }
+
+
 const HomeScreen= () => {
     const setSession = useAuthStore((s) => s.setSession)
+    const router = useRouter()
 
   useEffect(() => {
   const url = new URL(window.location.href)
@@ -48,13 +53,17 @@ const cognitoGetTokensUrl = process.env.NEXT_PUBLIC_COGNITO_GET_TOKEN_URL ||""
         email: claims.email || '',
         roles: claims['cognito:groups'] || [],
       }
-
-      setSession(user, {
+       setSession(user, {
         accessToken: tokens.access_token,
         refreshToken: tokens.refresh_token,
         expiresAt: Math.floor(Date.now() / 1000) + tokens.expires_in,
-      })    })
+      })  
+       })
 }, [])
+const handleShowHistory = () => {
+  router.push("/history")
+}
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-100 py-16">
       <div className="max-w-4xl w-full bg-white p-8 rounded-lg shadow-lg">
@@ -94,7 +103,7 @@ const cognitoGetTokensUrl = process.env.NEXT_PUBLIC_COGNITO_GET_TOKEN_URL ||""
             </CardContent>
             <CardFooter className="flex justify-center">
               <Link href="/history">
-                <Button className="bg-gray-600 text-white hover:bg-gray-700 w-full">
+                <Button onClick={handleShowHistory} className="bg-gray-600 text-white hover:bg-gray-700 w-full">
                   Ver Historial
                 </Button>
               </Link>

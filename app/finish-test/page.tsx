@@ -112,7 +112,7 @@ if (!currentEvaluation) return
               onClick={handleFinish}
               className="rounded-2xl px-5 py-2.5 text-white bg-black disabled:opacity-50"
             >
-              {submitting ? 'Enviando…' : done ? 'Enviado' : 'Finalizar test'}
+              {submitting ? 'Evaluando...' : done ? 'Enviado' : 'Finalizar test'}
             </button>
             {done && (
               <span className="text-sm text-green-700">

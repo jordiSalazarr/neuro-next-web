@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import axios from "axios";
 import ReactMarkdown from "react-markdown";
 import { motion } from "framer-motion";
@@ -11,11 +11,24 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Copy, Mail, RefreshCw, Download, ExternalLink, CheckCircle2, XCircle } from "lucide-react";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+
+import {
+  Copy,
+  Mail,
+  RefreshCw,
+  Download,
+  ExternalLink,
+  CheckCircle2,
+  XCircle,
+  MoreVertical,
+} from "lucide-react";
+
 import { useEvaluationStore } from "@/stores/evaluation";
 
 // -------- Types ---------
@@ -30,10 +43,7 @@ interface Evaluation {
   createdAt: string; // ISO
   currentStatus: "CREATED" | "IN_PROGRESS" | "COMPLETED" | string;
 }
-
-interface ApiResponse {
-  evaluation: Evaluation;
-}
+interface ApiResponse { evaluation: Evaluation; }
 
 // -------- Utils ---------
 const statusColor: Record<string, string> = {
@@ -46,24 +56,21 @@ function formatDate(iso: string) {
   try {
     const d = new Date(iso);
     return d.toLocaleString();
-  } catch {
-    return iso;
-  }
+  } catch { return iso; }
 }
-
 function cn(...classes: (string | undefined | false)[]) {
   return classes.filter(Boolean).join(" ");
 }
 
-// -------- Component ---------
+// ====== Component ======
 export default function EvaluationDetails() {
   const router = useRouter();
-
   const [data, setData] = useState<Evaluation | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [copyOk, setCopyOk] = useState(false);
-  const currentEvaluationID = useEvaluationStore(state => state.currentEvaluation?.id)
+
+  const currentEvaluationID = useEvaluationStore((s) => s.currentEvaluation?.id);
 
   async function fetchData() {
     if (!currentEvaluationID) return;
@@ -79,172 +86,301 @@ export default function EvaluationDetails() {
     }
   }
 
-  useEffect(() => {
-    fetchData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentEvaluationID]);
+  useEffect(() => { fetchData(); /* eslint-disable-next-line */ }, [currentEvaluationID]);
 
   const ageLabel = useMemo(() => (data ? `${data.patientAge} años` : ""), [data]);
 
-  const headerGradient = "bg-gradient-to-br from-indigo-600 via-purple-600 to-fuchsia-600";
-
   return (
-    <div className="min-h-screen w-full pb-16">
-      {/* Top hero */}
-      <div className={cn("relative", headerGradient)}>
-        <div className="absolute inset-0 opacity-20 bg-[radial-gradient(ellipse_at_top_left,white,transparent_50%)]" />
-        <div className="mx-auto max-w-5xl px-6 pt-10 pb-16 text-white">
-          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <h1 className="text-2xl md:text-4xl font-bold tracking-tight">Detalle de evaluación</h1>
-                <p className="mt-1 text-sm md:text-base opacity-90">ID: {currentEvaluationID || "—"}</p>
-              </div>
-              <div className="flex items-center gap-2">
-                <Button onClick={fetchData} variant="secondary" size="sm" className="gap-2">
-                  <RefreshCw className="h-4 w-4" /> Refrescar
-                </Button>
-                <Button variant="secondary" size="sm" onClick={() => router.back()} className="gap-2">
-                  <ExternalLink className="h-4 w-4" /> Volver
-                </Button>
-              </div>
-            </div>
-            <div className="mt-4 flex flex-wrap items-center gap-2">
-              {data ? (
-                <Badge className={cn("text-xs", statusColor[data.currentStatus] || "bg-slate-100 text-slate-700")}>{
-                  data.currentStatus
-                }</Badge>
-              ) : (
-                <Skeleton className="h-6 w-24 rounded-full" />
-              )}
-              <Separator orientation="vertical" className="h-6 bg-white/30" />
-              {data ? (
-                <span className="text-sm opacity-90">Creada: {formatDate(data.createdAt)}</span>
-              ) : (
-                <Skeleton className="h-5 w-40" />
-              )}
-            </div>
-          </motion.div>
-        </div>
-      </div>
-
-      <div className="mx-auto max-w-5xl -mt-12 px-6">
-        {/* Error */}
-        {error && (
-          <Alert variant="destructive" className="mb-6">
-            <XCircle className="h-4 w-4" />
-            <AlertTitle>Error</AlertTitle>
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        )}
-
-        {/* Content grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Left column: Patient & actions */}
-          <Card className="md:col-span-1 shadow-xl">
-            <CardHeader>
-              <CardTitle className="text-lg">Paciente</CardTitle>
-              <CardDescription>Información básica</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {loading ? (
-                <div className="space-y-3">
-                  <Skeleton className="h-5 w-48" />
-                  <Skeleton className="h-5 w-24" />
-                  <Skeleton className="h-5 w-56" />
+    <TooltipProvider delayDuration={200}>
+      <div className="min-h-screen w-full">
+        {/* ===== Sticky header compacto con acciones ===== */}
+        <div className="sticky top-0 z-30 border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+          <div className="mx-auto max-w-6xl px-4 py-3">
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground">Evaluación</span>
+                  <Separator orientation="vertical" className="h-4" />
+                  <span className="truncate font-medium text-sm">{currentEvaluationID || "—"}</span>
                 </div>
-              ) : (
-                <div className="space-y-3">
-                  <div>
-                    <Label className="text-xs text-muted-foreground">Nombre</Label>
-                    <p className="font-medium text-base">{data?.patientName}</p>
-                  </div>
-                  <div>
-                    <Label className="text-xs text-muted-foreground">Edad</Label>
-                    <p className="font-medium">{ageLabel}</p>
-                  </div>
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="min-w-0">
-                      <Label className="text-xs text-muted-foreground">Especialista</Label>
-                      <p className="truncate font-medium flex items-center gap-2">
-                        <Mail className="h-4 w-4 opacity-70" /> {data?.specialistMail}
-                      </p>
-                    </div>
-                    <Button
-                      size="icon"
-                      variant="outline"
-                      onClick={async () => {
-                        await navigator.clipboard.writeText(data?.specialistMail || "");
-                        setCopyOk(true);
-                        setTimeout(() => setCopyOk(false), 1500);
-                      }}
-                      aria-label="Copiar email"
-                    >
-                      {copyOk ? <CheckCircle2 className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                <div className="mt-1 flex flex-wrap items-center gap-2 text-xs">
+                  {data ? (
+                    <Badge className={cn("h-5 px-2", statusColor[data.currentStatus] || "bg-slate-100 text-slate-700")}>
+                      {data.currentStatus}
+                    </Badge>
+                  ) : (
+                    <Skeleton className="h-5 w-24 rounded-full" />
+                  )}
+                  <span className="text-muted-foreground">•</span>
+                  {data ? (
+                    <span className="text-muted-foreground">Creada: {formatDate(data.createdAt)}</span>
+                  ) : (
+                    <Skeleton className="h-4 w-28" />
+                  )}
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button onClick={fetchData} variant="outline" size="icon" aria-label="Refrescar">
+                      <RefreshCw className="h-4 w-4" />
                     </Button>
-                  </div>
-                  <div>
-                    <Label className="text-xs text-muted-foreground">ID especialista</Label>
-                    <p className="font-mono text-sm break-all">{data?.specialistId}</p>
-                  </div>
-                  <Separator />
-                  <div className="flex items-center gap-2">
-                    <Button
-                      className="w-full"
-                      variant="default"
+                  </TooltipTrigger>
+                  <TooltipContent>Refrescar</TooltipContent>
+                </Tooltip>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="icon" aria-label="Más acciones">
+                      <MoreVertical className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-44">
+                    <DropdownMenuItem onClick={() => router.back()}>
+                      <ExternalLink className="mr-2 h-4 w-4" /> Volver
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
                       disabled={!data?.storage_url}
                       onClick={() => data?.storage_url && window.open(data.storage_url, "_blank")}
                     >
-                      <Download className="h-4 w-4 mr-2" /> Descargar PDF
-                    </Button>
+                      <Download className="mr-2 h-4 w-4" /> Descargar PDF
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ===== Contenido ===== */}
+        <div className="mx-auto max-w-6xl px-4 py-6">
+          {error && (
+            <Alert variant="destructive" className="mb-6">
+              <XCircle className="h-4 w-4" />
+              <AlertTitle>Error</AlertTitle>
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+
+          {/* Tarjeta resumen muy compacta */}
+          <Card className="mb-6">
+            <CardContent className="py-4">
+              {loading ? (
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <Skeleton className="h-5 w-44" />
+                  <Skeleton className="h-5 w-20" />
+                  <Skeleton className="h-5 w-72" />
+                </div>
+              ) : (
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <InfoRow label="Paciente" value={data?.patientName} />
+                  <InfoRow label="Edad" value={ageLabel} />
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Label className="text-xs text-muted-foreground">Especialista</Label>
+                    <div className="flex items-center gap-2 truncate">
+                      <Mail className="h-4 w-4 text-muted-foreground" />
+                      <span className="truncate text-sm">{data?.specialistMail}</span>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7"
+                            onClick={async () => {
+                              await navigator.clipboard.writeText(data?.specialistMail || "");
+                              setCopyOk(true);
+                              setTimeout(() => setCopyOk(false), 1200);
+                            }}
+                            aria-label="Copiar email"
+                          >
+                            {copyOk ? <CheckCircle2 className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>{copyOk ? "Copiado" : "Copiar"}</TooltipContent>
+                      </Tooltip>
+                    </div>
                   </div>
                 </div>
               )}
             </CardContent>
           </Card>
 
-          {/* Right column: Analysis & meta */}
-          <div className="md:col-span-2 space-y-6">
-            <Card className="shadow-xl">
-              <CardHeader>
-                <CardTitle className="text-lg">Análisis del asistente</CardTitle>
-                <CardDescription>Resumen clínico automatizado</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {loading ? (
-                  <div className="space-y-2">
-                    <Skeleton className="h-4 w-5/6" />
-                    <Skeleton className="h-4 w-3/4" />
-                    <Skeleton className="h-4 w-2/3" />
-                    <Skeleton className="h-4 w-4/5" />
-                  </div>
-                ) : (
-                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }}>
-                    {data?.assistantAnalysis ? (
-                      <div className="prose prose-sm dark:prose-invert max-w-none">
-                        <ReactMarkdown>{data.assistantAnalysis}</ReactMarkdown>
-                      </div>
-                    ) : (
-                      <p className="text-sm text-muted-foreground">Sin análisis disponible.</p>
-                    )}
-                  </motion.div>
-                )}
-              </CardContent>
-            </Card>
+          <div className="grid gap-6 lg:grid-cols-3">
+            {/* Columna izquierda: Panel plegable de metadatos */}
+            <div className="lg:col-span-1">
+              <Card className="overflow-hidden">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base">Detalles</CardTitle>
+                  <CardDescription className="text-xs">Información y acciones</CardDescription>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <Accordion type="single" collapsible className="w-full">
+                    <AccordionItem value="paciente">
+                      <AccordionTrigger className="text-sm">Paciente</AccordionTrigger>
+                      <AccordionContent className="space-y-3">
+                        {loading ? (
+                          <div className="space-y-2">
+                            <Skeleton className="h-4 w-48" />
+                            <Skeleton className="h-4 w-24" />
+                          </div>
+                        ) : (
+                          <>
+                            <InfoRow label="Nombre" value={data?.patientName} />
+                            <InfoRow label="Edad" value={ageLabel} />
+                          </>
+                        )}
+                      </AccordionContent>
+                    </AccordionItem>
 
+                    <AccordionItem value="especialista">
+                      <AccordionTrigger className="text-sm">Especialista</AccordionTrigger>
+                      <AccordionContent className="space-y-3">
+                        {loading ? (
+                          <div className="space-y-2">
+                            <Skeleton className="h-4 w-56" />
+                            <Skeleton className="h-4 w-80" />
+                          </div>
+                        ) : (
+                          <>
+                            <InfoRow label="Email" value={data?.specialistMail} mono={false} />
+                            <InfoRow label="ID" value={data?.specialistId} mono />
+                          </>
+                        )}
+                      </AccordionContent>
+                    </AccordionItem>
+
+                    <AccordionItem value="sistema">
+                      <AccordionTrigger className="text-sm">Sistema</AccordionTrigger>
+                      <AccordionContent className="space-y-3">
+                        {loading ? (
+                          <div className="space-y-2">
+                            <Skeleton className="h-4 w-40" />
+                            <Skeleton className="h-4 w-32" />
+                          </div>
+                        ) : (
+                          <>
+                            <InfoRow label="Estado" value={data?.currentStatus} />
+                            <InfoRow label="Creada" value={data ? formatDate(data.createdAt) : ""} />
+                            <div className="pt-1">
+                              <Button
+                                className="w-full"
+                                variant="secondary"
+                                disabled={!data?.storage_url}
+                                onClick={() => data?.storage_url && window.open(data.storage_url, "_blank")}
+                              >
+                                <Download className="mr-2 h-4 w-4" /> Descargar PDF
+                              </Button>
+                            </div>
+                          </>
+                        )}
+                      </AccordionContent>
+                    </AccordionItem>
+                  </Accordion>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Columna derecha: Tabs con análisis y (futuro) adjuntos */}
+            <div className="lg:col-span-2 space-y-6">
+              <Card className="shadow-sm">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base">Análisis</CardTitle>
+                  <CardDescription className="text-xs">Resumen clínico automatizado</CardDescription>
+                </CardHeader>
+
+                <CardContent>
+                  <Tabs defaultValue="resumen" className="w-full">
+                    <TabsList className="grid w-full grid-cols-2">
+                      <TabsTrigger value="resumen">Resumen</TabsTrigger>
+                      <TabsTrigger value="raw">Markdown</TabsTrigger>
+                    </TabsList>
+
+                    <TabsContent value="resumen" className="mt-4">
+                      {loading ? (
+                        <div className="space-y-2">
+                          <Skeleton className="h-4 w-5/6" />
+                          <Skeleton className="h-4 w-4/5" />
+                          <Skeleton className="h-4 w-3/4" />
+                          <Skeleton className="h-4 w-2/3" />
+                        </div>
+                      ) : data?.assistantAnalysis ? (
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.25 }}>
+                          <div className="prose prose-sm dark:prose-invert max-w-none">
+                            <ReactMarkdown>{data.assistantAnalysis}</ReactMarkdown>
+                          </div>
+                        </motion.div>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">Sin análisis disponible.</p>
+                      )}
+                    </TabsContent>
+
+                    <TabsContent value="raw" className="mt-4">
+                      {loading ? (
+                        <div className="space-y-2">
+                          <Skeleton className="h-4 w-5/6" />
+                          <Skeleton className="h-4 w-4/5" />
+                          <Skeleton className="h-4 w-3/4" />
+                        </div>
+                      ) : data?.assistantAnalysis ? (
+                        <pre className="rounded-md border bg-muted/40 p-3 text-xs overflow-x-auto whitespace-pre-wrap">
+                          {data.assistantAnalysis}
+                        </pre>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">Sin contenido.</p>
+                      )}
+                    </TabsContent>
+                  </Tabs>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </div>
+
+        {/* ===== Action bar móvil/desktop (pegajoso) ===== */}
+        <div className="sticky bottom-0 z-30 border-t bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+          <div className="mx-auto max-w-6xl px-4 py-3">
+            <div className="flex items-center justify-between">
+              <div className="text-xs text-muted-foreground truncate">
+                {data ? `Paciente: ${data.patientName} · ${ageLabel}` : "Cargando…"}
+              </div>
+              <div className="flex items-center gap-2">
+                <Button onClick={fetchData} variant="outline" size="sm" className="gap-2">
+                  <RefreshCw className="h-4 w-4" /> Refrescar
+                </Button>
+                <Button
+                  variant="default"
+                  size="sm"
+                  disabled={!data?.storage_url}
+                  onClick={() => data?.storage_url && window.open(data.storage_url, "_blank")}
+                  className="gap-2"
+                >
+                  <Download className="h-4 w-4" /> PDF
+                </Button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </TooltipProvider>
   );
 }
 
-/*
-Uso recomendado (App Router):
-
-// app/evaluations/[id]/page.tsx
-export { default } from "@/app/components/EvaluationDetails";
-
-// Si prefieres usarlo como componente controlado:
-// <EvaluationDetails /> lee el id de useParams();
-*/
+/** ---------- Subcomponentes pequeños ---------- */
+function InfoRow({
+  label,
+  value,
+  mono,
+}: {
+  label: string;
+  value: string | number | undefined | null;
+  mono?: boolean;
+}) {
+  return (
+    <div className="min-w-0">
+      <Label className="text-xs text-muted-foreground">{label}</Label>
+      <p className={cn("truncate text-sm font-medium", mono && "font-mono break-all truncate")}>
+        {value ?? "—"}
+      </p>
+    </div>
+  );
+}

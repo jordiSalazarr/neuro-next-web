@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -32,7 +32,7 @@ const CATEGORIES = [
   },
 ]
 
-const TEST_DURATION = 5 // 60 segundos
+const TEST_DURATION = 20 // 60 segundos
 
 export function LanguageSubtest({ onComplete, onPause }: SubtestProps) {
   const [phase, setPhase] = useState<"instructions" | "active" | "completed">("instructions")
@@ -44,6 +44,8 @@ export function LanguageSubtest({ onComplete, onPause }: SubtestProps) {
   const [invalidWords, setInvalidWords] = useState<string[]>([])
   const [startTime, setStartTime] = useState<Date | null>(null)
   const [wordTimestamps, setWordTimestamps] = useState<{ word: string; timestamp: number }[]>([])
+const [words, setWords] = useState<string[]>([])
+const wordsRef = useRef<string[]>([])
   const currentEvaluationID = useEvaluationStore(state=>state.currentEvaluation?.id)
   const router = useRouter()
 
@@ -65,15 +67,12 @@ export function LanguageSubtest({ onComplete, onPause }: SubtestProps) {
   }, [phase])
 
   const startSubtest = () => {
-    setPhase("active")
-    setStartTime(new Date())
-    setTimeRemaining(TEST_DURATION)
-    setValidWords([])
-    setRepeatedWords([])
-    setInvalidWords([])
-    setWordTimestamps([])
-  }
-
+  setPhase("active")
+  setStartTime(new Date())
+  setTimeRemaining(TEST_DURATION)
+  setValidWords([]); setRepeatedWords([]); setInvalidWords([]); setWordTimestamps([])
+  setWords([]); wordsRef.current = []
+}
   const isValidWord = (word: string, category: string): boolean => {
     const normalizedWord = word.toLowerCase().trim()
     if (normalizedWord.length < 2) return false
@@ -230,69 +229,56 @@ export function LanguageSubtest({ onComplete, onPause }: SubtestProps) {
   }
 
   const handleWordSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!currentWord.trim()) return
+  e.preventDefault()
+  const w = currentWord.trim()
+  if (!w) return
+  setWords(prev => {
+    const next = [...prev, w]
+    wordsRef.current = next
+    return next
+  })
+  setCurrentWord("")
+}
 
-    const word = currentWord.trim().toLowerCase()
-    const category = CATEGORIES[currentCategory].name
-    const timestamp = Date.now()
-
-    // Verificar si es una palabra repetida
-    if (validWords.includes(word) || repeatedWords.includes(word)) {
-      setRepeatedWords((prev) => [...prev, word])
-    } else if (isValidWord(word, category)) {
-      setValidWords((prev) => [...prev, word])
-      setWordTimestamps((prev) => [...prev, { word, timestamp }])
-    } else {
-      setInvalidWords((prev) => [...prev, word])
-    }
-
+ const completeSubtest = async () => {
+  // si quedó algo en el input, añádelo
+  if (currentWord.trim()) {
+    const w = currentWord.trim()
     setCurrentWord("")
+    wordsRef.current = [...wordsRef.current, w]
+    setWords(wordsRef.current)
   }
 
-  const completeSubtest = async() => {
-    try {
-       setPhase("completed")
-
+  try {
+    setPhase("completed")
     const timeSpent = startTime ? (Date.now() - startTime.getTime()) / 1000 : 0
     const totalWords = validWords.length + repeatedWords.length + invalidWords.length
-    const accuracy = totalWords > 0 ? (validWords.length / totalWords) * 100 : 0
+    const wordsPerMinute = (validWords.length / Math.max(1, (TEST_DURATION - timeRemaining))) * 60
 
-    // Calcular palabras por minuto
-    const wordsPerMinute = (validWords.length / (TEST_DURATION - timeRemaining)) * 60
-const res = await axios.post(`${process.env.NEXT_PUBLIC_API_BASE_URL}/v1/evaluations/language-fluency`,{
-  EvaluationID:currentEvaluationID,
-  Category: CATEGORIES[currentCategory].name,
-  Words :[...validWords,...invalidWords],
-  Duration: TEST_DURATION,
-  Language: "es",
-  Proficiency: "nativo",
-  TotalTime: Math.round(timeSpent)
-})
-console.log(res)
-    onComplete({
-      startTime: startTime!,
-      endTime: new Date(),
-      score: validWords.length, // Puntuación basada en palabras válidas
-      errors: repeatedWords.length + invalidWords.length,
-      timeSpent: Math.round(timeSpent),
-      rawData: {
-        category: CATEGORIES[currentCategory].name,
-        validWords,
-        repeatedWords,
-        invalidWords,
-        totalWords,
-        accuracy: Math.round(accuracy),
-        wordsPerMinute: Math.round(wordsPerMinute),
-        wordTimestamps,
-      },
-    })
-    router.push("/finish-test")
-    } catch (error) {
-      console.log(error)
+    const payload = {
+      EvaluationID: currentEvaluationID ?? "",
+      Category: CATEGORIES[currentCategory].name,
+      Words: wordsRef.current,         // <— TODAS las palabras
+      Duration: TEST_DURATION,
+      Language: "es",
+      Proficiency: "nativo",
+      TotalTime: Math.round(timeSpent),
     }
-   
+
+    await axios.post(`${process.env.NEXT_PUBLIC_API_BASE_URL}/v1/evaluations/language-fluency`, payload)
+
+    // onComplete({
+    //   startTime: startTime!, endTime: new Date(),
+    //   score: validWords.length,
+    //   errors: repeatedWords.length + invalidWords.length,
+    //   timeSpent: Math.round(timeSpent),
+    //   rawData: { /* ...lo tuyo... */, wordsPerMinute: Math.round(wordsPerMinute) },
+    // })
+    router.push("/finish-test")
+  } catch (e) {
+    console.log(e)
   }
+}
 
   const formatTime = (seconds: number) => {
     return `${seconds.toString().padStart(2, "0")}s`

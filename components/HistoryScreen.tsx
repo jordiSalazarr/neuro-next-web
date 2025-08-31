@@ -1,378 +1,470 @@
 "use client"
 
-import React, { useState, useMemo } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
+import Link from "next/link"
+import ReactMarkdown from "react-markdown"
+
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Card, CardContent } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import  {Select, SelectContent, SelectItem, SelectTrigger, SelectValue}  from "@/components/ui/select"
-import { Search, ArrowUpDown, Calendar, User, Mail, Clock, FileText, ArrowLeft } from "lucide-react"
-import { useApp } from "@/contexts/AppContext"
-import type { HistoryReport } from "@/types"
-import { useRouter } from "next/navigation" // Import useRouter from next/navigation if using Next.js
-const mockHistoryData: HistoryReport[] = [
-  {
-    id: "report-1",
-    patientId: "patient-1",
-    patientName: "María García López",
-    patientEmail: "maria.garcia@email.com",
-    sessionId: "session-1",
-    createdDate: new Date("2024-01-15T10:30:00"),
-    completedDate: new Date("2024-01-15T11:15:00"),
-    totalScore: 85,
-    subtestCount: 6,
-    duration: 45,
-    status: "completed",
-  },
-  {
-    id: "report-2",
-    patientId: "patient-2",
-    patientName: "Juan Pérez Martín",
-    patientEmail: "juan.perez@email.com",
-    sessionId: "session-2",
-    createdDate: new Date("2024-01-14T14:20:00"),
-    completedDate: new Date("2024-01-14T15:10:00"),
-    totalScore: 72,
-    subtestCount: 6,
-    duration: 50,
-    status: "completed",
-  },
-  {
-    id: "report-3",
-    patientId: "patient-3",
-    patientName: "Ana Rodríguez Silva",
-    patientEmail: "ana.rodriguez@email.com",
-    sessionId: "session-3",
-    createdDate: new Date("2024-01-13T09:15:00"),
-    completedDate: new Date("2024-01-13T09:45:00"),
-    totalScore: 45,
-    subtestCount: 4,
-    duration: 30,
-    status: "partial",
-  },
-  {
-    id: "report-4",
-    patientId: "patient-4",
-    patientName: "Carlos Fernández Ruiz",
-    patientEmail: "carlos.fernandez@email.com",
-    sessionId: "session-4",
-    createdDate: new Date("2024-01-12T16:00:00"),
-    completedDate: new Date("2024-01-12T16:55:00"),
-    totalScore: 91,
-    subtestCount: 6,
-    duration: 55,
-    status: "completed",
-  },
-  {
-    id: "report-5",
-    patientId: "patient-5",
-    patientName: "Laura Sánchez Torres",
-    patientEmail: "laura.sanchez@email.com",
-    sessionId: "session-5",
-    createdDate: new Date("2024-01-11T11:30:00"),
-    completedDate: new Date("2024-01-11T12:20:00"),
-    totalScore: 78,
-    subtestCount: 6,
-    duration: 50,
-    status: "completed",
-  },
-  // Extra para probar casos distintos 👇
-  {
-    id: "report-6",
-    patientId: "patient-6",
-    patientName: "Pedro López Hernández",
-    patientEmail: "pedro.lopez@email.com",
-    sessionId: "session-6",
-    createdDate: new Date("2024-01-10T09:00:00"),
-    completedDate: new Date("2024-01-10T09:25:00"),
-    totalScore: 30,
-    subtestCount: 3,
-    duration: 25,
-    status: "partial",
-  },
-  {
-    id: "report-7",
-    patientId: "patient-7",
-    patientName: "Elena Martínez",
-    patientEmail: "elena.martinez@email.com",
-    sessionId: "session-7",
-    createdDate: new Date("2024-01-09T17:40:00"),
-    completedDate: new Date("2024-01-09T18:45:00"),
-    totalScore: 99,
-    subtestCount: 7,
-    duration: 65,
-    status: "completed",
-  },
-  {
-    id: "report-8",
-    patientId: "patient-8",
-    patientName: "Luis Gómez",
-    patientEmail: "luis.gomez@email.com",
-    sessionId: "session-8",
-    createdDate: new Date("2024-01-08T12:15:00"),
-    completedDate: new Date("2024-01-08T12:45:00"),
-    totalScore: 60,
-    subtestCount: 5,
-    duration: 30,
-    status: "completed",
-  },
-  {
-    id: "report-9",
-    patientId: "patient-9",
-    patientName: "Marta Ruiz",
-    patientEmail: "marta.ruiz@email.com",
-    sessionId: "session-9",
-    createdDate: new Date("2024-01-07T08:00:00"),
-    completedDate: new Date("2024-01-07T08:35:00"),
-    totalScore: 55,
-    subtestCount: 4,
-    duration: 35,
-    status: "partial",
-  },
-  {
-    id: "report-10",
-    patientId: "patient-10",
-    patientName: "David Torres",
-    patientEmail: "david.torres@email.com",
-    sessionId: "session-10",
-    createdDate: new Date("2024-01-06T19:20:00"),
-    completedDate: new Date("2024-01-06T20:00:00"),
-    totalScore: 82,
-    subtestCount: 6,
-    duration: 40,
-    status: "completed",
-  },
-]
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
+import { Separator } from "@/components/ui/separator"
+import { Skeleton } from "@/components/ui/skeleton"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { useAuthStore } from "@/stores/auth"
 
-export default function HistoryScreen() {
-  const { state, dispatch } = useApp()
-  const [searchTerm, setSearchTerm] = useState("")
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc")
-  const router = useRouter() // Import useRouter from next/navigation if using Next.js
-  React.useEffect(() => {
-    const mockHistoryData: HistoryReport[] = [
-      {
-        id: "report-1",
-        patientId: "patient-1",
-        patientName: "María García López",
-        patientEmail: "maria.garcia@email.com",
-        sessionId: "session-1",
-        createdDate: new Date("2024-01-15T10:30:00"),
-        completedDate: new Date("2024-01-15T11:15:00"),
-        totalScore: 85,
-        subtestCount: 6,
-        duration: 45,
-        status: "completed",
-      },
-      {
-        id: "report-2",
-        patientId: "patient-2",
-        patientName: "Juan Pérez Martín",
-        patientEmail: "juan.perez@email.com",
-        sessionId: "session-2",
-        createdDate: new Date("2024-01-14T14:20:00"),
-        completedDate: new Date("2024-01-14T15:10:00"),
-        totalScore: 72,
-        subtestCount: 6,
-        duration: 50,
-        status: "completed",
-      },
-      {
-        id: "report-3",
-        patientId: "patient-3",
-        patientName: "Ana Rodríguez Silva",
-        patientEmail: "ana.rodriguez@email.com",
-        sessionId: "session-3",
-        createdDate: new Date("2024-01-13T09:15:00"),
-        completedDate: new Date("2024-01-13T09:45:00"),
-        totalScore: 45,
-        subtestCount: 4,
-        duration: 30,
-        status: "partial",
-      },
-      {
-        id: "report-4",
-        patientId: "patient-4",
-        patientName: "Carlos Fernández Ruiz",
-        patientEmail: "carlos.fernandez@email.com",
-        sessionId: "session-4",
-        createdDate: new Date("2024-01-12T16:00:00"),
-        completedDate: new Date("2024-01-12T16:55:00"),
-        totalScore: 91,
-        subtestCount: 6,
-        duration: 55,
-        status: "completed",
-      },
-      {
-        id: "report-5",
-        patientId: "patient-5",
-        patientName: "Laura Sánchez Torres",
-        patientEmail: "laura.sanchez@email.com",
-        sessionId: "session-5",
-        createdDate: new Date("2024-01-11T11:30:00"),
-        completedDate: new Date("2024-01-11T12:20:00"),
-        totalScore: 78,
-        subtestCount: 6,
-        duration: 50,
-        status: "completed",
-      },
-    ]
+import { Calendar, Filter, Loader2, RotateCcw, Search, ChevronLeft, ChevronRight, Download } from "lucide-react"
 
-    dispatch({ type: "LOAD_HISTORY", payload: mockHistoryData })
-  }, [dispatch])
+// ---------- Tipos ----------
+type Evaluation = {
+  pk: string
+  patientName: string
+  patientAge: number
+  specialistMail: string
+  specialistId: string
+  assistantAnalysis: string
+  storage_url: string
+  createdAt: string
+  currentStatus: "CREATED" | "IN_PROGRESS" | "FINISHED" | string
+}
+type ApiResponse = {
+  evaluations: Evaluation[]
+  meta?: { offset: number; limit: number; count: number }
+}
 
+// ---------- Utils ----------
+function cnStatusVariant(status: string) {
+  switch (status) {
+    case "CREATED":
+      return "bg-slate-100 text-slate-700"
+    case "IN_PROGRESS":
+      return "bg-amber-100 text-amber-800"
+    case "FINISHED":
+      return "bg-emerald-100 text-emerald-800"
+    default:
+      return "bg-gray-100 text-gray-700"
+  }
+}
+function formatDate(d: string) {
+  try { return new Date(d).toLocaleString() } catch { return d }
+}
+function buildURL(base: string, path: string, params: Record<string, string | number | undefined>) {
+  const url = new URL(path, base)
+  Object.entries(params).forEach(([k, v]) => {
+    if (v !== undefined && v !== "" && v !== null) url.searchParams.set(k, String(v))
+  })
+  return url.toString()
+}
+const isoDate = (dt: Date) =>
+  `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`
 
-  const filteredAndSortedReports = useMemo(() => {
-    const filtered =mockHistoryData?.filter(
-      (report) =>
-        report.patientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        report.patientEmail.toLowerCase().includes(searchTerm.toLowerCase()),
-    )
+const oneMonthAgoISO = () => {
+  const d = new Date()
+  d.setMonth(d.getMonth() - 1)
+  return isoDate(d)
+}
+const todayISO = () => isoDate(new Date())
 
-    return filtered?.sort((a, b) => {
-      const dateA = new Date(a.createdDate).getTime()
-      const dateB = new Date(b.createdDate).getTime()
-      return sortOrder === "desc" ? dateB - dateA : dateA - dateB
+function truncateWords(text: string, maxWords: number): string {
+  const words = (text ?? "").trim().split(/\s+/)
+  if (words.length <= maxWords) return text
+  return words.slice(0, maxWords).join(" ") + " …"
+}
+
+// ---------- Componente ----------
+export default function EvaluationsSearch() {
+  const currentUser = useAuthStore((s) => s.user)
+
+  // Filtros
+  const [fromDate, setFromDate] = useState<string>("")      // YYYY-MM-DD
+  const [toDate, setToDate] = useState<string>("")          // YYYY-MM-DD
+  const [searchTerm, setSearchTerm] = useState<string>("")  // paciente / término
+  const [statusLocal, setStatusLocal] = useState<string>("")// filtro local opcional (no toca API)
+
+  // Paginación
+  const [limit, setLimit] = useState<number>(12)
+  const [page, setPage] = useState<number>(1) // 1-based
+  const offset = useMemo(() => (page - 1) * limit, [page, limit])
+
+  // Datos
+  const [data, setData] = useState<Evaluation[]>([])
+  const [count, setCount] = useState<number>(0)
+  const [loading, setLoading] = useState<boolean>(false)
+  const [error, setError] = useState<string | null>(null)
+
+  // Construcción URL
+  const base = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8401"
+  const fetchUrl = useMemo(() => {
+    return buildURL(base, "/v1/evaluations", {
+      specialist_id: currentUser?.id || undefined,
+      from_date: fromDate || undefined,
+      to_date: toDate || undefined,
+      search_term: searchTerm || undefined,
+      offset,
+      limit,
     })
-  }, [state.historyReports, searchTerm, sortOrder])
+  }, [base, currentUser, fromDate, toDate, searchTerm, offset, limit])
 
-  const formatDate = (date: Date) => {
-    return new Intl.DateTimeFormat("es-ES", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    }).format(new Date(date))
+  // Fetch manual / controlado
+  const [shouldFetch, setShouldFetch] = useState<boolean>(false)
+
+  // Debounce para búsqueda textual (no bloquea si quieres usar botón)
+  const debounceRef = useRef<NodeJS.Timeout | null>(null)
+  const onSearchTermChange = (v: string) => {
+    setSearchTerm(v)
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => {
+      setPage(1)
+      setShouldFetch(true)
+    }, 400)
   }
 
-  const getScoreColor = (score: number) => {
-    if (score >= 80) return "bg-green-100 text-green-800"
-    if (score >= 60) return "bg-yellow-100 text-yellow-800"
-    return "bg-red-100 text-red-800"
+  // Rango de fechas por defecto: desde hace 1 mes → hoy (al montar)
+  useEffect(() => {
+    // sólo si el usuario no ha tocado nada
+    setFromDate((prev) => prev || oneMonthAgoISO())
+    setToDate((prev) => prev || todayISO())
+    setPage(1)
+    setShouldFetch(true)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  useEffect(() => {
+    if (!shouldFetch) return
+    let cancelled = false
+    setLoading(true)
+    setError(null)
+
+    fetch(fetchUrl, { method: "GET" })
+      .then(async (r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`)
+        const json: ApiResponse = await r.json()
+        if (cancelled) return
+        setData(json.evaluations ?? [])
+        setCount(json.meta?.count ?? (json.evaluations?.length ?? 0))
+      })
+      .catch((e) => !cancelled && setError(e.message || "Error fetching evaluations"))
+      .finally(() => !cancelled && setLoading(false))
+
+    return () => { cancelled = true }
+  }, [fetchUrl, shouldFetch])
+
+  // Acciones
+  const onSearch = () => { setPage(1); setShouldFetch(true) }
+  const onReset = () => {
+    setFromDate(oneMonthAgoISO())
+    setToDate(todayISO())
+    setSearchTerm("")
+    setStatusLocal("")
+    setLimit(12)
+    setPage(1)
+    setShouldFetch(true)
   }
+
+  const totalPages = useMemo(() => {
+    if (!count) return page
+    return Math.max(1, Math.ceil(count / limit))
+  }, [count, limit, page])
+
+  // Filtro local por estado (no cambia el modelo ni la API)
+  const filteredData = useMemo(() => {
+    if (!statusLocal) return data
+    return data.filter((e) => String(e.currentStatus) === statusLocal)
+  }, [data, statusLocal])
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4 md:p-6 lg:p-8">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-          <div className="flex items-center gap-3">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => router.push("/home")}
-              className="flex items-center gap-2"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Volver
-            </Button>
-            <div>
-              <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Historial de Informes</h1>
-              <p className="text-gray-600 mt-1">Busca y revisa informes de evaluaciones anteriores</p>
+    <TooltipProvider delayDuration={150}>
+      <div className="space-y-6">
+
+        {/* ===== Toolbar sticky y compacta ===== */}
+        <div className="sticky top-0 z-30 bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
+          <div className="mx-auto max-w-6xl px-3 sm:px-4">
+            <div className="py-3 flex flex-col gap-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <h2 className="text-base sm:text-lg font-semibold">Buscador de evaluaciones</h2>
+                  <span className="text-xs text-muted-foreground">({count || 0} totales)</span>
+                </div>
+                <div className="hidden sm:flex items-center gap-2">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button variant="outline" size="sm" onClick={onReset}>
+                        <RotateCcw className="h-4 w-4 mr-2" /> Reset
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Limpiar filtros y rango por defecto (último mes)</TooltipContent>
+                  </Tooltip>
+                  <Button size="sm" onClick={onSearch} disabled={loading}>
+                    {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Search className="h-4 w-4 mr-2" />}
+                    Buscar
+                  </Button>
+                </div>
+              </div>
+
+              {/* Filtros básicos */}
+              <div className="grid gap-3 sm:grid-cols-5">
+                <div className="flex items-center gap-2 col-span-2">
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                  <Input
+                    type="date"
+                    value={fromDate}
+                    onChange={(e) => setFromDate(e.target.value)}
+                    aria-label="Desde"
+                  />
+                  <span className="text-muted-foreground text-sm">→</span>
+                  <Input
+                    type="date"
+                    value={toDate}
+                    onChange={(e) => setToDate(e.target.value)}
+                    aria-label="Hasta"
+                    max={todayISO()}
+                  />
+                </div>
+
+                <div className="col-span-2">
+                  <Input
+                    placeholder="Buscar por paciente o término…"
+                    value={searchTerm}
+                    onChange={(e) => onSearchTermChange(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && onSearch()}
+                    aria-label="Buscar"
+                  />
+                </div>
+
+                <div className="flex">
+                  <Select
+                    value={String(limit)}
+                    onValueChange={(v) => { setLimit(Number(v)); setPage(1); setShouldFetch(true) }}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="12" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="8">8 / pág</SelectItem>
+                      <SelectItem value="12">12 / pág</SelectItem>
+                      <SelectItem value="24">24 / pág</SelectItem>
+                      <SelectItem value="48">48 / pág</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Filtros avanzados plegables (no cambian API) */}
+              <Accordion type="single" collapsible>
+                <AccordionItem value="advanced">
+                  <AccordionTrigger className="text-sm">
+                    <div className="flex items-center gap-2">
+                      <Filter className="h-4 w-4" /> Más filtros (opcionales)
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <div className="grid gap-3 sm:grid-cols-4">
+                      <div className="sm:col-span-2">
+                        <label className="text-xs text-muted-foreground">Estado (filtro local)</label>
+                        <Select value={statusLocal} onValueChange={setStatusLocal}>
+                          <SelectTrigger className="w-full mt-1">
+                            <SelectValue placeholder="Todos" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="">Todos</SelectItem>
+                            <SelectItem value="CREATED">CREATED</SelectItem>
+                            <SelectItem value="IN_PROGRESS">IN_PROGRESS</SelectItem>
+                            <SelectItem value="FINISHED">FINISHED</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="flex items-end gap-2 sm:col-span-2">
+                        <Button variant="outline" onClick={onReset} className="w-full sm:w-auto">
+                          <RotateCcw className="h-4 w-4 mr-2" /> Reset
+                        </Button>
+                        <Button onClick={onSearch} disabled={loading} className="w-full sm:w-auto">
+                          {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Search className="h-4 w-4 mr-2" />}
+                          Buscar
+                        </Button>
+                      </div>
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
             </div>
           </div>
         </div>
 
-        {/* Search and Filter Controls */}
-        <Card className="mb-6">
-          <CardContent className="p-4">
-            <div className="flex flex-col sm:flex-row gap-4">
-              <div className="flex-1 relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                <Input
-                  placeholder="Buscar por nombre o email del paciente..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-              <Select value={sortOrder} onValueChange={(value: "asc" | "desc") => setSortOrder(value)}>
-                <SelectTrigger className="w-full sm:w-48">
-                  <ArrowUpDown className="h-4 w-4 mr-2" />
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="desc">Más reciente primero</SelectItem>
-                  <SelectItem value="asc">Más antiguo primero</SelectItem>
-                </SelectContent>
-              </Select>
+        {/* ===== Estado y navegación ===== */}
+        <div className="mx-auto max-w-6xl px-3 sm:px-4">
+          <div className="flex items-center justify-between">
+            <div className="text-sm text-muted-foreground">
+              {loading
+                ? "Cargando…"
+                : `Página ${page} de ${totalPages}${filteredData.length ? ` · ${filteredData.length} resultados` : ""}`}
             </div>
-          </CardContent>
-        </Card>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page === 1 || loading}
+                onClick={() => { setPage((p) => Math.max(1, p - 1)); setShouldFetch(true) }}
+              >
+                <ChevronLeft className="h-4 w-4 mr-1" /> Anterior
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={loading || data.length < limit}
+                onClick={() => { setPage((p) => p + 1); setShouldFetch(true) }}
+              >
+                Siguiente <ChevronRight className="h-4 w-4 ml-1" />
+              </Button>
+            </div>
+          </div>
 
-        {/* Results Summary */}
-        <div className="mb-4">
-          <p className="text-sm text-gray-600">
-            Mostrando {filteredAndSortedReports?.length} de {state.historyReports?.length} informes
-          </p>
-        </div>
+          {/* ===== Grid de resultados ===== */}
+          <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
+            {/* Skeletons mientras carga */}
+            {loading &&
+              Array.from({ length: 6 }).map((_, i) => (
+                <Card key={`sk-${i}`} className="overflow-hidden">
+                  <CardHeader className="pb-2">
+                    <div className="flex items-start justify-between">
+                      <Skeleton className="h-5 w-40" />
+                      <Skeleton className="h-6 w-20 rounded-full" />
+                    </div>
+                    <Skeleton className="h-4 w-28 mt-2" />
+                  </CardHeader>
+                  <CardContent className="grid gap-3 text-sm">
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-3/5" />
+                    <Skeleton className="h-24 w-full" />
+                    <div className="flex justify-between">
+                      <Skeleton className="h-4 w-24" />
+                      <Skeleton className="h-4 w-10" />
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
 
-        {/* Reports List */}
-        <div className="space-y-4">
-          {filteredAndSortedReports?.length === 0 ? (
-            <Card>
-              <CardContent className="p-8 text-center">
-                <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No se encontraron informes</h3>
-                <p className="text-gray-600">
-                  {searchTerm ? "Intenta con otros términos de búsqueda" : "Aún no hay informes guardados"}
-                </p>
-              </CardContent>
-            </Card>
-          ) : (
-            filteredAndSortedReports?.map((report) => (
-              <Card key={report.id} className="hover:shadow-md transition-shadow">
-                <CardContent className="p-4 md:p-6">
-                  <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-                    <div className="flex-1 space-y-3">
-                      <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-                        <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                          <User className="h-4 w-4" />
-                          {report.patientName}
-                        </h3>
-                        <Badge variant={report.status === "completed" ? "default" : "secondary"}>
-                          {report.status === "completed" ? "Completado" : "Parcial"}
-                        </Badge>
-                      </div>
+            {/* Empty state */}
+            {!loading && filteredData.length === 0 && (
+              <Card className="border-dashed">
+                <CardContent className="p-8 text-center text-muted-foreground">
+                  No hay evaluaciones para los filtros actuales.
+                </CardContent>
+              </Card>
+            )}
 
-                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-sm text-gray-600">
-                        <div className="flex items-center gap-1">
-                          <Mail className="h-4 w-4" />
-                          {report.patientEmail}
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Calendar className="h-4 w-4" />
-                          {formatDate(report.createdDate)}
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Clock className="h-4 w-4" />
-                          {report.duration} min
-                        </div>
+            {/* Cards */}
+            {filteredData.map((ev) => (
+              <Card key={ev.pk} className="overflow-hidden hover:shadow-lg transition-shadow">
+                <CardHeader className="pb-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <CardTitle className="text-lg truncate">{ev.patientName || "Paciente sin nombre"}</CardTitle>
+                    <Badge className={cnStatusVariant(ev.currentStatus)}>{ev.currentStatus}</Badge>
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-1">{formatDate(ev.createdAt)}</div>
+                </CardHeader>
+
+                <CardContent className="grid gap-3 text-sm">
+                  <div className="grid grid-cols-2 gap-3">
+                    <Info label="Edad" value={ev.patientAge ?? "–"} />
+                    <Info label="Especialista" value={ev.specialistMail} clamp />
+                  </div>
+                  <Info label="Specialist ID" value={ev.specialistId} mono />
+
+                  {ev.assistantAnalysis && (
+                    <div className="space-y-1">
+                      <div className="text-xs text-muted-foreground">Análisis asistente</div>
+                      <div className="prose prose-sm dark:prose-invert max-w-none">
+                        <ReactMarkdown>{truncateWords(ev.assistantAnalysis, 28)}</ReactMarkdown>
                       </div>
                     </div>
+                  )}
 
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-                      <div className="text-center">
-                        <div
-                          className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getScoreColor(report.totalScore)}`}
-                        >
-                          Puntuación: {report.totalScore}
-                        </div>
-                        <p className="text-xs text-gray-500 mt-1">{report.subtestCount} subtests</p>
-                      </div>
-
-                      <Button variant="outline" size="sm">
-                        Ver Informe
-                      </Button>
-                    </div>
+                  <div className="flex items-center justify-between pt-2">
+                    <Link
+                      href={`/evaluations/${ev.pk}`}
+                      className="text-primary text-sm underline underline-offset-4"
+                    >
+                      Ver detalle
+                    </Link>
+                    {ev.storage_url ? (
+                      <a
+                        href={ev.storage_url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-sm text-muted-foreground hover:text-foreground inline-flex items-center gap-1"
+                      >
+                        <Download className="h-4 w-4" /> PDF
+                      </a>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">Sin PDF</span>
+                    )}
                   </div>
                 </CardContent>
               </Card>
-            ))
-          )}
+            ))}
+          </div>
+
+          {/* ===== Footer de navegación ===== */}
+          <div className="mt-6 flex items-center justify-between">
+            <div className="text-xs text-muted-foreground">
+              {count
+                ? `Mostrando ${Math.min(filteredData.length, limit)} de ${count}`
+                : filteredData.length
+                  ? `Mostrando ${filteredData.length}`
+                  : ""}
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page === 1 || loading}
+                onClick={() => { setPage((p) => Math.max(1, p - 1)); setShouldFetch(true) }}
+              >
+                <ChevronLeft className="h-4 w-4 mr-1" /> Anterior
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={loading || data.length < limit}
+                onClick={() => { setPage((p) => p + 1); setShouldFetch(true) }}
+              >
+                Siguiente <ChevronRight className="h-4 w-4 ml-1" />
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
+    </TooltipProvider>
+  )
+}
+
+/* ---------- Subcomponentes ---------- */
+function Info({
+  label,
+  value,
+  mono,
+  clamp,
+}: {
+  label: string
+  value: string | number | undefined | null
+  mono?: boolean
+  clamp?: boolean
+}) {
+  return (
+    <div className="min-w-0">
+      <div className="text-xs text-muted-foreground">{label}</div>
+      <p
+        className={[
+          "text-sm font-medium",
+          mono ? "font-mono break-all" : "",
+          clamp ? "truncate" : "",
+        ].join(" ")}
+        title={typeof value === "string" ? value : undefined}
+      >
+        {value ?? "—"}
+      </p>
     </div>
   )
 }

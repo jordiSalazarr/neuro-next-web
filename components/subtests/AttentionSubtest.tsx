@@ -39,7 +39,7 @@ const ALL_LETTERS = [
 ]
 const MATRIX_ROWS = 52 // 52 filas de matriz
 const MATRIX_COLS = 22 // 22 columnas de matriz
-const TOTAL_TARGETS = 50 // 50 letras objetivo diferentes
+const TOTAL_TARGETS = 10 // 50 letras objetivo diferentes
 const SUBTEST_DURATION = 300 // 5 minutos en segundos
 
 interface LetterCell {

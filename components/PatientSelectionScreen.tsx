@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -18,11 +18,32 @@ export default function PatientSelectionScreen() {
   const [patientName, setPatientName] = useState("")
   const [patientAge, setPatientAge] = useState(1)
   const [isFormValid, setIsFormValid] = useState(false)
-  const user = useAuthStore(state=>state.user)
+   const user = useAuthStore(state=>state.user)
+    const setSession = useAuthStore(state=>state.setSession)
+
   const tokens = useAuthStore(state=> state.tokens)
   const router = useRouter() // Import useRouter from next/router if using Next.js
   const setCurrentEvaluation = useEvaluationStore(state=>state.setCurrentEvaluation)
-
+async function registerUserData(name:string, mail:String ){
+     if (!user) return
+      const res = await axios.post(`${process.env.NEXT_PUBLIC_API_BASE_URL}/v1/auth/user/${encodeURIComponent(user?.email)}/${encodeURIComponent(user?.name)}`)
+      console.log(res)
+       const newUser = {
+        id: res.data.user.ID,
+        name: user.name,
+        email: user.email,
+        roles: user.roles,
+      }
+        setSession(newUser, {
+        accessToken: tokens?.accessToken|| "",
+        refreshToken: tokens?.refreshToken||"",
+        expiresAt:tokens?.expiresAt,
+      })  
+}
+useEffect(()=>{
+       if (!user) return
+      registerUserData(user?.name,user?.email)
+},[])
   const validateForm = (name: string, age: number) => {
     const isValid = name.trim().length > 0 && age  > 0 && !isNaN(Number(age)) && Number(age) > 0
     setIsFormValid(isValid)
@@ -65,7 +86,7 @@ const handleAgeChange = (value: number) => {
         patientName:patientName,
         patientAge: patientAge,
         specialistMail: user.email,
-        specialistId: "3513a54c-60ce-4be4-bc10-aaeef04315c8",//user.id when we get the real info from our db
+        specialistId: user.id,//user.id when we get the real info from our db
       },
       {
         headers: {

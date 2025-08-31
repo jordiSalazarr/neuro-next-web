@@ -4,7 +4,9 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import axios from "axios"
 import type { SubtestProps } from "@/types"
+import { useEvaluationStore } from "@/stores/evaluation"
 
 interface Node {
   id: string
@@ -19,7 +21,7 @@ interface Node {
 const TMT_A_SEQUENCE = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"]
 const TMT_B_SEQUENCE = ["1", "A", "2", "B", "3", "C", "4", "D", "5", "E", "6", "F"]
 
-export function ExecutiveFunctionSubtest({ onComplete, onPause }: SubtestProps) {
+export function ExecutiveFunctionSubtest({ onComplete, onPause, evaluationId }: SubtestProps & { evaluationId: string }) {
   const [phase, setPhase] = useState<"instructions" | "tmt-a" | "tmt-b" | "completed">("instructions")
   const [nodes, setNodes] = useState<Node[]>([])
   const [currentSequenceIndex, setCurrentSequenceIndex] = useState(0)
@@ -27,17 +29,24 @@ export function ExecutiveFunctionSubtest({ onComplete, onPause }: SubtestProps) 
   const [corrections, setCorrections] = useState(0)
   const [startTime, setStartTime] = useState<Date | null>(null)
   const [phaseStartTime, setPhaseStartTime] = useState<Date | null>(null)
-  const [tmtATime, setTmtATime] = useState(0)
-  const [tmtBTime, setTmtBTime] = useState(0)
+  const [tmtATime, setTmtATime] = useState(0) // ms
+  const [tmtBTime, setTmtBTime] = useState(0) // ms
   const [tmtAErrors, setTmtAErrors] = useState(0)
   const [tmtBErrors, setTmtBErrors] = useState(0)
+  const currentEvaluationID = useEvaluationStore(state => state.currentEvaluation?.id)
+
+  // NUEVO: contadores globales
+  const [totalClicks, setTotalClicks] = useState(0)
+  const [startAtIso, setStartAtIso] = useState<string | null>(null)
+
+  const numberOfItems = TMT_A_SEQUENCE.length + TMT_B_SEQUENCE.length // 24
 
   const generateNodes = (sequence: string[]) => {
     const newNodes: Node[] = []
     const usedPositions: { x: number; y: number }[] = []
 
     sequence.forEach((value, index) => {
-      let x, y
+      let x:number, y:number
       let attempts = 0
       do {
         x = Math.random() * 500 + 50 // Entre 50 y 550
@@ -62,7 +71,14 @@ export function ExecutiveFunctionSubtest({ onComplete, onPause }: SubtestProps) 
 
   const startSubtest = () => {
     setPhase("tmt-a")
-    setStartTime(new Date())
+    const now = new Date()
+    setStartTime(now)
+    setStartAtIso(now.toISOString())
+    setTotalClicks(0)
+    setTmtATime(0)
+    setTmtBTime(0)
+    setTmtAErrors(0)
+    setTmtBErrors(0)
     startTMTA()
   }
 
@@ -86,6 +102,9 @@ export function ExecutiveFunctionSubtest({ onComplete, onPause }: SubtestProps) 
   }
 
   const handleNodeClick = (clickedNode: Node) => {
+    // contar todos los clics
+    setTotalClicks((c) => c + 1)
+
     const currentSequence = phase === "tmt-a" ? TMT_A_SEQUENCE : TMT_B_SEQUENCE
     const expectedValue = currentSequence[currentSequenceIndex]
 
@@ -104,7 +123,7 @@ export function ExecutiveFunctionSubtest({ onComplete, onPause }: SubtestProps) 
       setNodes(newNodes)
       setCurrentSequenceIndex((prev) => prev + 1)
 
-      // Verificar si completó la secuencia
+      // ¿terminó la secuencia de la fase?
       if (currentSequenceIndex + 1 >= currentSequence.length) {
         const phaseTime = phaseStartTime ? Date.now() - phaseStartTime.getTime() : 0
 
@@ -122,7 +141,6 @@ export function ExecutiveFunctionSubtest({ onComplete, onPause }: SubtestProps) 
       // Click incorrecto
       setErrors((prev) => prev + 1)
 
-      // Mostrar feedback visual de error
       const newNodes = nodes.map((node) => {
         if (node.id === clickedNode.id) {
           return { ...node, isActive: false }
@@ -131,7 +149,6 @@ export function ExecutiveFunctionSubtest({ onComplete, onPause }: SubtestProps) 
       })
       setNodes(newNodes)
 
-      // Después de un breve momento, restaurar el estado
       setTimeout(() => {
         setNodes((prevNodes) =>
           prevNodes.map((node) => ({
@@ -144,36 +161,80 @@ export function ExecutiveFunctionSubtest({ onComplete, onPause }: SubtestProps) 
     }
   }
 
-  const completeSubtest = () => {
+  const completeSubtest = async () => {
     setPhase("completed")
 
-    const totalTime = tmtATime + tmtBTime
+    const totalTimeMs = tmtATime + tmtBTime
     const totalErrors = tmtAErrors + tmtBErrors
     const timeSpent = startTime ? (Date.now() - startTime.getTime()) / 1000 : 0
 
-    // Puntuación basada en tiempo y errores (menos tiempo y errores = mejor puntuación)
-    const timeScore = Math.max(0, 100 - totalTime / 1000 / 2)
+    // Puntuación (mantengo tu lógica)
+    const timeScore = Math.max(0, 100 - totalTimeMs / 1000 / 2)
     const errorPenalty = totalErrors * 5
     const finalScore = Math.max(0, timeScore - errorPenalty)
 
-    onComplete({
-      startTime: startTime!,
-      endTime: new Date(),
-      score: Math.round(finalScore),
-      errors: totalErrors,
-      timeSpent: Math.round(timeSpent),
-      rawData: {
-        tmtATime: Math.round(tmtATime / 1000),
-        tmtBTime: Math.round(tmtBTime / 1000),
-        tmtAErrors,
-        tmtBErrors,
-        totalTime: Math.round(totalTime / 1000),
-        totalErrors,
-        corrections: corrections,
-      },
-    })
+    // ---- JSON requerido para el backend ----
+    const payload = {
+      numberOfItems,                          // 24 (12 + 12)
+      totalClicks,                            // correctos + errores
+      startAt: startAtIso ?? new Date().toISOString(),
+      totalErrors,
+      totalCorrect: numberOfItems,
+      totalTime: Math.round(totalTimeMs * 1e6), // ns
+      type: "a+b",
+      evaluationId:currentEvaluationID,                           // Asegúrate de pasar este prop
+      createdAt: new Date().toISOString(),
+    }
+
+    // POST final (normalizo base URL por si lleva / final)
+    try {
+      const base = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8401"
+      const url = new URL("/v1/evaluations/executive-functions", base)
+      await axios.post(url.toString(), payload)
+
+      // Callback externo (si tu flujo lo usa)
+      onComplete({
+        startTime: startTime!,
+        endTime: new Date(),
+        score: Math.round(finalScore),
+        errors: totalErrors,
+        timeSpent: Math.round(timeSpent),
+        rawData: {
+          tmtATime: Math.round(tmtATime / 1000),
+          tmtBTime: Math.round(tmtBTime / 1000),
+          tmtAErrors,
+          tmtBErrors,
+          totalTime: Math.round(totalTimeMs / 1000),
+          totalErrors,
+          corrections: corrections,
+          totalClicks,
+        },
+      })
+    } catch (err) {
+      // Si falla el POST, igualmente disparamos el onComplete para que el caller pueda reaccionar
+      console.error("Error posting executive-functions:", err)
+      onComplete({
+        startTime: startTime!,
+        endTime: new Date(),
+        score: Math.round(finalScore),
+        errors: totalErrors,
+        timeSpent: Math.round(timeSpent),
+        rawData: {
+          tmtATime: Math.round(tmtATime / 1000),
+          tmtBTime: Math.round(tmtBTime / 1000),
+          tmtAErrors,
+          tmtBErrors,
+          totalTime: Math.round(totalTimeMs / 1000),
+          totalErrors,
+          corrections: corrections,
+          totalClicks,
+          postError: true,
+        },
+      })
+    }
   }
 
+  // ------- Render (sin cambios visuales) -------
   if (phase === "instructions") {
     return (
       <Card>
@@ -184,12 +245,8 @@ export function ExecutiveFunctionSubtest({ onComplete, onPause }: SubtestProps) 
           <div className="bg-orange-50 p-6 rounded-lg">
             <h4 className="font-semibold text-orange-900 mb-3">¿Qué debe hacer?</h4>
             <ul className="space-y-2 text-orange-800">
-              <li>
-                • <strong>TMT-A:</strong> Conecte los números en orden (1→2→3→4...)
-              </li>
-              <li>
-                • <strong>TMT-B:</strong> Alterne entre números y letras (1→A→2→B→3→C...)
-              </li>
+              <li>• <strong>TMT-A:</strong> Conecte los números en orden (1→2→3→4...)</li>
+              <li>• <strong>TMT-B:</strong> Alterne entre números y letras (1→A→2→B→3→C...)</li>
               <li>• Haga click en los círculos en el orden correcto</li>
               <li>• Trabaje lo más rápido posible sin cometer errores</li>
               <li>• Si se equivoca, continúe desde donde estaba</li>
@@ -197,9 +254,7 @@ export function ExecutiveFunctionSubtest({ onComplete, onPause }: SubtestProps) 
           </div>
 
           <div className="bg-yellow-50 p-4 rounded-lg">
-            <p className="text-yellow-800">
-              <strong>Duración estimada:</strong> 7 minutos
-            </p>
+            <p className="text-yellow-800"><strong>Duración estimada:</strong> 7 minutos</p>
           </div>
 
           <Button onClick={startSubtest} className="w-full" size="lg">
@@ -227,7 +282,7 @@ export function ExecutiveFunctionSubtest({ onComplete, onPause }: SubtestProps) 
           <CardContent>
             <div className="relative bg-gray-50 rounded-lg" style={{ height: "500px", width: "600px" }}>
               <svg width="600" height="500" className="absolute inset-0">
-                {/* Dibujar líneas de conexión */}
+                {/* Líneas de conexión */}
                 {nodes.map((node, index) => {
                   if (node.isConnected && index < nodes.length - 1) {
                     const nextConnectedNode = nodes.find((n) => n.order === node.order + 1 && n.isConnected)
@@ -248,7 +303,7 @@ export function ExecutiveFunctionSubtest({ onComplete, onPause }: SubtestProps) 
                   return null
                 })}
 
-                {/* Dibujar nodos */}
+                {/* Nodos */}
                 {nodes.map((node) => (
                   <g key={node.id}>
                     <circle
@@ -278,9 +333,7 @@ export function ExecutiveFunctionSubtest({ onComplete, onPause }: SubtestProps) 
             <div className="flex justify-between items-center mt-4">
               <div className="text-sm text-gray-600">Fase: {phase === "tmt-a" ? "TMT-A" : "TMT-B"}</div>
               <div className="flex gap-4">
-                <Button variant="outline" onClick={onPause}>
-                  Pausar
-                </Button>
+                <Button variant="outline" onClick={onPause}>Pausar</Button>
               </div>
             </div>
           </CardContent>
@@ -298,18 +351,10 @@ export function ExecutiveFunctionSubtest({ onComplete, onPause }: SubtestProps) 
         <p className="text-center text-gray-600 mb-4">El test TMT A/B ha finalizado. Los resultados se han guardado.</p>
         <div className="bg-orange-50 p-4 rounded-lg">
           <div className="grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <strong>TMT-A tiempo:</strong> {Math.round(tmtATime / 1000)}s
-            </div>
-            <div>
-              <strong>TMT-B tiempo:</strong> {Math.round(tmtBTime / 1000)}s
-            </div>
-            <div>
-              <strong>TMT-A errores:</strong> {tmtAErrors}
-            </div>
-            <div>
-              <strong>TMT-B errores:</strong> {tmtBErrors}
-            </div>
+            <div><strong>TMT-A tiempo:</strong> {Math.round(tmtATime / 1000)}s</div>
+            <div><strong>TMT-B tiempo:</strong> {Math.round(tmtBTime / 1000)}s</div>
+            <div><strong>TMT-A errores:</strong> {tmtAErrors}</div>
+            <div><strong>TMT-B errores:</strong> {tmtBErrors}</div>
           </div>
         </div>
       </CardContent>
