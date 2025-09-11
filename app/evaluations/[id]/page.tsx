@@ -201,7 +201,7 @@ export default function Page() {
   const [error, setError] = useState<string | null>(null)
 
   const base = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8401"
-  const url = useMemo(() => new URL(`/v1/evaluations/${id}`, base).toString(), [base, id])
+  const url = useMemo(() => new URL(`${window.location.href}/${id}`, base).toString(), [base, id])
 
   useEffect(() => {
     let cancelled = false

@@ -20,8 +20,6 @@ function decodeJwt<T = any>(token: string): T | null {
     return null
   }
 }
-
-
 const HomeScreen= () => {
     const setSession = useAuthStore((s) => s.setSession)
     const router = useRouter()
