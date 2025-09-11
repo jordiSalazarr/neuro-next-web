@@ -1,3 +1,5 @@
+'use client';
+
 import HistoryScreen from '../../components/HistoryScreen'
 
 const Page = () => {
