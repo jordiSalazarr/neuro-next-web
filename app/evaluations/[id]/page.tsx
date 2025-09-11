@@ -154,7 +154,6 @@ function fmtDate(iso?: string) {
 }
 const clamp = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n))
 const nsToSec = (ns?: number) => (ns ? +(ns / 1e9).toFixed(2) : 0)
-const pct = (v: number) => `${(v * 100).toFixed(0)}%`
 const fmtPct = (v: number) => `${v.toFixed(0)}%`
 
 function Metric({ label, value }: { label: string; value: React.ReactNode }) {

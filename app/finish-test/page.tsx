@@ -3,25 +3,11 @@
 import { useEvaluationStore } from '@/stores/evaluation'
 import axios from 'axios'
 import { useRouter } from "next/navigation" // Import useRouter from next/navigation if using Next.js
-import { useEffect, useMemo, useState } from 'react'
+import {  useState } from 'react'
 
 // ⬇️ Cambia este import por tu contexto real
 // Debe exponer algo como { currentEvaluation, clearCurrentEvaluation }
 
-type FinishPayload = {
- id:String
-}
-
-function computeAgeFromDate(dateISO?: string | null): number | undefined {
-  if (!dateISO) return undefined
-  const dob = new Date(dateISO)
-  if (isNaN(dob.getTime())) return undefined
-  const now = new Date()
-  let age = now.getFullYear() - dob.getFullYear()
-  const m = now.getMonth() - dob.getMonth()
-  if (m < 0 || (m === 0 && now.getDate() < dob.getDate())) age--
-  return age
-}
 
 function formatDate(d: string | Date | undefined): string {
   if (!d) return '-'
