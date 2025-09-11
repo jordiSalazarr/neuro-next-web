@@ -86,13 +86,14 @@ export default function EvaluationDetails() {
   const [copyOk, setCopyOk] = useState(false);
 
   const currentEvaluationID = useEvaluationStore((s) => s.currentEvaluation?.id);
+  const base = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8401"
 
   async function fetchData() {
     if (!currentEvaluationID) return;
     setLoading(true);
     setError(null);
     try {
-      const res = await axios.get<ApiResponse>(`http://localhost:8401/v1/evaluations/${currentEvaluationID}`);
+      const res = await axios.get<ApiResponse>(`${base}/v1/evaluations/${currentEvaluationID}`);
       setData(res.data.evaluation);
     } catch (e: any) {
       setError(e?.response?.data?.message || e?.message || "Error cargando la evaluación");
