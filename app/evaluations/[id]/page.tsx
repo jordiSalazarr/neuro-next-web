@@ -13,6 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Skeleton } from "@/components/ui/skeleton"
 
 import { Download, ArrowLeft, Info, ListTree, FileText } from "lucide-react"
+import { TooltipProvider } from "@/components/ui/tooltip"
 
 // ---------- Tipos del modelo (adaptados a tu backend) ----------
 type LetterCancellation = {
