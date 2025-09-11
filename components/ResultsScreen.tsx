@@ -62,6 +62,21 @@ function cn(...classes: (string | undefined | false)[]) {
   return classes.filter(Boolean).join(" ");
 }
 
+/** Botón reutilizable arriba-izquierda, color azul apagado */
+function BackToHomeButton() {
+  const router = useRouter();
+  return (
+    <Button
+      onClick={() => router.push("/home")}
+      size="sm"
+      className="gap-2 bg-blue-100 text-blue-800 border border-blue-200 hover:bg-blue-200"
+      aria-label="Volver a inicio"
+    >
+      Volver a inicio
+    </Button>
+  );
+}
+
 // ====== Component ======
 export default function EvaluationDetails() {
   const router = useRouter();
@@ -97,29 +112,34 @@ export default function EvaluationDetails() {
         <div className="sticky top-0 z-30 border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
           <div className="mx-auto max-w-6xl px-4 py-3">
             <div className="flex items-center justify-between gap-3">
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground">Evaluación</span>
-                  <Separator orientation="vertical" className="h-4" />
-                  <span className="truncate font-medium text-sm">{currentEvaluationID || "—"}</span>
-                </div>
-                <div className="mt-1 flex flex-wrap items-center gap-2 text-xs">
-                  {data ? (
-                    <Badge className={cn("h-5 px-2", statusColor[data.currentStatus] || "bg-slate-100 text-slate-700")}>
-                      {data.currentStatus}
-                    </Badge>
-                  ) : (
-                    <Skeleton className="h-5 w-24 rounded-full" />
-                  )}
-                  <span className="text-muted-foreground">•</span>
-                  {data ? (
-                    <span className="text-muted-foreground">Creada: {formatDate(data.createdAt)}</span>
-                  ) : (
-                    <Skeleton className="h-4 w-28" />
-                  )}
+              {/* Izquierda: botón "Volver a inicio" + info de evaluación */}
+              <div className="flex items-center gap-3 min-w-0">
+                <BackToHomeButton />
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">Evaluación</span>
+                    <Separator orientation="vertical" className="h-4" />
+                    <span className="truncate font-medium text-sm">{currentEvaluationID || "—"}</span>
+                  </div>
+                  <div className="mt-1 flex flex-wrap items-center gap-2 text-xs">
+                    {data ? (
+                      <Badge className={cn("h-5 px-2", statusColor[data.currentStatus] || "bg-slate-100 text-slate-700")}>
+                        {data.currentStatus}
+                      </Badge>
+                    ) : (
+                      <Skeleton className="h-5 w-24 rounded-full" />
+                    )}
+                    <span className="text-muted-foreground">•</span>
+                    {data ? (
+                      <span className="text-muted-foreground">Creada: {formatDate(data.createdAt)}</span>
+                    ) : (
+                      <Skeleton className="h-4 w-28" />
+                    )}
+                  </div>
                 </div>
               </div>
 
+              {/* Derecha: acciones */}
               <div className="flex items-center gap-2">
                 <Tooltip>
                   <TooltipTrigger asChild>

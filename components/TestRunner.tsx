@@ -297,14 +297,14 @@ export default function TestRunner() {
         </div>
       )}
        <div>
-      {/* Botón para finalizar el test */}
+      {/* Botón para finalizar el test
       <Button
         variant="destructive"
         onClick={handleFinishTest}
         className="mt-4"
       >
         Finalizar Test
-      </Button>
+      </Button> */}
 
       {/* Diálogo de confirmación */}
       {isConfirming && (

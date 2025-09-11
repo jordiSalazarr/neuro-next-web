@@ -9,6 +9,7 @@ import { Volume2, CheckCircle2 } from "lucide-react";
 import axios from "axios";
 import { useEvaluationStore } from "@/stores/evaluation";
 
+
 // ⬇️ Ajusta la lista a la que realmente vayas a presentar (ejemplo basado en tu JSON)
 const WORD_LIST = [
   "pera",

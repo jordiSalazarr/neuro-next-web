@@ -6,11 +6,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useApp } from "@/contexts/AppContext"
-import { useRouter } from "next/navigation" // Import useRouter from next/navigation if using Next.js
+import { useRouter } from "next/navigation"
 import type { CurrentEvaluation, Patient, TestSession } from "@/types"
 import { useAuthStore } from "@/stores/auth"
 import axios from "axios"
 import { useEvaluationStore } from "@/stores/evaluation"
+import { Separator } from "@/components/ui/separator"
+import { Badge } from "@/components/ui/badge"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { motion } from "framer-motion"
+import { ClipboardList, User2, Mail, LogOut, ShieldCheck, CalendarClock } from "lucide-react"
+
 export default function PatientSelectionScreen() {
   const BASE_API_URL = process.env.NEXT_PUBLIC_API_BASE_URL
 
@@ -18,34 +24,40 @@ export default function PatientSelectionScreen() {
   const [patientName, setPatientName] = useState("")
   const [patientAge, setPatientAge] = useState(1)
   const [isFormValid, setIsFormValid] = useState(false)
-   const user = useAuthStore(state=>state.user)
-    const setSession = useAuthStore(state=>state.setSession)
+  const user = useAuthStore((state) => state.user)
+  const setSession = useAuthStore((state) => state.setSession)
+  const tokens = useAuthStore((state) => state.tokens)
+  const router = useRouter()
+  const setCurrentEvaluation = useEvaluationStore((state) => state.setCurrentEvaluation)
 
-  const tokens = useAuthStore(state=> state.tokens)
-  const router = useRouter() // Import useRouter from next/router if using Next.js
-  const setCurrentEvaluation = useEvaluationStore(state=>state.setCurrentEvaluation)
-async function registerUserData(name:string, mail:String ){
-     if (!user) return
-      const res = await axios.post(`${process.env.NEXT_PUBLIC_API_BASE_URL}/v1/auth/user/${encodeURIComponent(user?.email)}/${encodeURIComponent(user?.name)}`)
-      console.log(res)
-       const newUser = {
-        id: res.data.user.ID,
-        name: user.name,
-        email: user.email,
-        roles: user.roles,
-      }
-        setSession(newUser, {
-        accessToken: tokens?.accessToken|| "",
-        refreshToken: tokens?.refreshToken||"",
-        expiresAt:tokens?.expiresAt,
-      })  
-}
-useEffect(()=>{
-       if (!user) return
-      registerUserData(user?.name,user?.email)
-},[])
+  async function registerUserData(name: string, mail: String) {
+    if (!user) return
+    const res = await axios.post(
+      `${process.env.NEXT_PUBLIC_API_BASE_URL}/v1/auth/user/${encodeURIComponent(user?.email)}/${encodeURIComponent(
+        user?.name,
+      )}`,
+    )
+    const newUser = {
+      id: res.data.user.ID,
+      name: user.name,
+      email: user.email,
+      roles: user.roles,
+    }
+    setSession(newUser, {
+      accessToken: tokens?.accessToken || "",
+      refreshToken: tokens?.refreshToken || "",
+      expiresAt: tokens?.expiresAt,
+    })
+  }
+
+  useEffect(() => {
+    if (!user) return
+    registerUserData(user?.name, user?.email)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   const validateForm = (name: string, age: number) => {
-    const isValid = name.trim().length > 0 && age  > 0 && !isNaN(Number(age)) && Number(age) > 0
+    const isValid = name.trim().length > 0 && age > 15 && !isNaN(Number(age)) && Number(age) > 0
     setIsFormValid(isValid)
   }
 
@@ -54,92 +66,81 @@ useEffect(()=>{
     validateForm(value, patientAge)
   }
 
-const handleAgeChange = (value: number) => {
-  let str = value.toString();
-
-  // 1. Si empieza con "0", quitarlo
-  if (str.startsWith("0")) {
-    str = str.slice(1);
+  const handleAgeChange = (value: number) => {
+    let str = value.toString()
+    if (str.startsWith("0")) {
+      str = str.slice(1)
+    }
+    if (str.length > 3) {
+      str = str.slice(0, 3)
+    }
+    const newValue = str ? parseInt(str, 10) : 0
+    setPatientAge(newValue)
+    validateForm(patientName, newValue)
   }
 
-  // 2. Limitar a 3 caracteres como máximo
-  if (str.length > 3) {
-    str = str.slice(0, 3);
-  }
-
-  // Pasar a número otra vez (si queda vacío, será NaN → tratamos como 0)
-  const newValue = str ? parseInt(str, 10) : 0;
-
-  setPatientAge(newValue);
-  validateForm(patientName, newValue);
-};
   async function createNewEvaluation() {
-    if (!user||!tokens?.accessToken){
+    if (!user || !tokens?.accessToken) {
       return
     }
-  try {
-    console.log("posting to url: "+BASE_API_URL+"v1/evaluations")
-    const response = await axios.post(
-      `${BASE_API_URL}/v1/evaluations`, // ajusta el endpoint si es distinto
-      {
-        totalScore: 85,
-        patientName:patientName,
-        patientAge: patientAge,
-        specialistMail: user.email,
-        specialistId: user.id,//user.id when we get the real info from our db
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${tokens.accessToken}`,
-          "Content-Type": "application/json",
+    try {
+      const response = await axios.post(
+        `${BASE_API_URL}/v1/evaluations`,
+        {
+          patientName: patientName,
+          patientAge: patientAge,
+          specialistMail: user.email,
+          specialistId: user.id,
         },
+        {
+          headers: {
+            Authorization: `Bearer ${tokens.accessToken}`,
+            "Content-Type": "application/json",
+          },
+        },
+      )
+      const evaluation: CurrentEvaluation = {
+        id: response.data.evaluation.pk,
+        createdAt: response.data.evaluation.createdAt,
+        currentStatus: response.data.evaluation.currentStatus,
+        patientAge: response.data.evaluation.patientAge,
+        specialistId: response.data.evaluation.specialistId,
+        specialistMail: response.data.evaluation.specialistMail,
+        patientName: response.data.evaluation.patientName,
       }
-    );
-    const evaluation:CurrentEvaluation = {
-      id:response.data.evaluation.pk,
-      createdAt: response.data.evaluation.createdAt,
-      currentStatus: response.data.evaluation.currentStatus,
-      patientAge: response.data.evaluation.patientAge,
-      specialistId: response.data.evaluation.specialistId,
-      specialistMail: response.data.evaluation.specialistMail,
-patientName:response.data.evaluation.patientName
-      
+      setCurrentEvaluation(evaluation)
+    } catch (error: any) {
+      console.error("❌ Error enviando evaluación:", error.response?.data || error.message)
     }
-    console.log("✅ evaluation: ", evaluation);
-
-     setCurrentEvaluation(evaluation)
-
-    console.log("✅ Respuesta del backend:", response.data);
-  } catch (error: any) {
-    console.error("❌ Error enviando evaluación:", error.response?.data || error.message);
   }
-}
 
-  const handleStartSession = () => {
+  const handleStartSession = async () => {
     if (!isFormValid) return
+    try {
+      const newPatient: Patient = {
+        id: `patient-${Date.now()}`,
+        name: patientName.trim(),
+        age: Number(patientAge),
+        gender: "M",
+        education: 12,
+      }
 
-    const newPatient: Patient = {
-      id: `patient-${Date.now()}`,
-      name: patientName.trim(),
-      age: Number(patientAge),
-      gender: "M", // Valor por defecto
-      education: 12, // Valor por defecto
+      const newSession: TestSession = {
+        id: `session-${Date.now()}`,
+        patientId: newPatient.id,
+        startTime: new Date(),
+        currentSubtest: 0,
+        subtestResults: [],
+        status: "in-progress",
+      }
+
+      dispatch({ type: "SELECT_PATIENT", payload: newPatient })
+      dispatch({ type: "START_SESSION", payload: newSession })
+      await createNewEvaluation()
+      router.push("/test-runner")
+    } catch (error) {
+      console.log(error)
     }
-
-    const newSession: TestSession = {
-      id: `session-${Date.now()}`,
-      patientId: newPatient.id,
-      startTime: new Date(),
-      currentSubtest: 0,
-      subtestResults: [],
-      status: "in-progress",
-    }
-
-    dispatch({ type: "SELECT_PATIENT", payload: newPatient })
-    dispatch({ type: "START_SESSION", payload: newSession })
-    createNewEvaluation()
-    //TODO: aqui debe envviar al usuario a la pantalla de test runner "/test-runner" with next router
-    router.push("/test-runner") // Descomentar si se usa Next.js con
   }
 
   const handleLogout = () => {
@@ -147,91 +148,144 @@ patientName:response.data.evaluation.patientName
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 sm:p-6 lg:p-8">
-      <div className="max-w-sm sm:max-w-lg lg:max-w-2xl xl:max-w-4xl mx-auto">
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4 mb-6 sm:mb-8">
-          <div className="flex-1">
-            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 leading-tight">
-              Datos del Especialista
-            </h1>
-            <p className="text-sm sm:text-base text-gray-600 mt-2">
-              Nombre: <span className="font-medium">{user?.name}</span>
-            </p>
-            <p>
-              Email: <span className="font-medium">{user?.email}</span>
-            </p>
+    <div className="relative min-h-screen bg-gradient-to-b from-slate-50 to-white dark:from-slate-900 dark:to-slate-950">
+      {/* halo decorativo */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 -top-24 mx-auto h-64 w-[80%] rounded-full bg-blue-100/50 blur-3xl dark:bg-blue-900/20"
+      />
+
+      <div className="mx-auto max-w-5xl px-4 py-8 sm:py-10">
+        {/* Header compacto con identidad clínica */}
+        <div className="mb-6 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600 text-white shadow-sm">
+              <ClipboardList className="h-5 w-5" />
+            </div>
+            <div>
+              <h1 className="text-xl font-semibold leading-tight">Nueva evaluación</h1>
+              <p className="text-xs text-muted-foreground">Registro del paciente y preparación</p>
+            </div>
           </div>
-          <Button
-            variant="outline"
-            onClick={handleLogout}
-            className="self-start sm:self-auto text-sm sm:text-base bg-transparent"
-          >
-            Cerrar Sesión
-          </Button>
+
+          <div className="flex items-center gap-2">
+            <Badge variant="secondary" className="hidden sm:flex items-center gap-2">
+              <User2 className="h-3.5 w-3.5" />
+              {user?.name || "Especialista"}
+            </Badge>
+            <Button variant="outline" size="sm" onClick={handleLogout} className="gap-2">
+              <LogOut className="h-4 w-4" />
+              Cerrar sesión
+            </Button>
+          </div>
         </div>
 
-        <Card>
-          <CardHeader className="px-4 sm:px-6 py-4 sm:py-6">
-            <CardTitle className="text-lg sm:text-xl lg:text-2xl">Información del Paciente</CardTitle>
-            <CardDescription className="text-sm sm:text-base mt-2">
-              Ingrese los datos básicos del paciente para iniciar la evaluación
-            </CardDescription>
+        {/* Paso / Progreso contextual */}
+        <div className="mb-6 flex flex-wrap items-center gap-2 text-xs">
+          <Badge className="bg-blue-600 text-white">Paso 1</Badge>
+          <span className="text-muted-foreground">Datos del especialista y del paciente</span>
+          <Separator orientation="vertical" className="mx-2 h-4" />
+          <div className="flex items-center gap-1 text-muted-foreground">
+            <CalendarClock className="h-3.5 w-3.5" />
+            Duración estimada 45–60 min
+          </div>
+        </div>
+
+        {/* Tarjeta Especialista */}
+        <Card className="mb-6 border-blue-100/70 shadow-sm dark:border-slate-800">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Datos del especialista</CardTitle>
+            <CardDescription>Verifique su identidad antes de continuar</CardDescription>
           </CardHeader>
-          <CardContent className="px-4 sm:px-6 pb-4 sm:pb-6 space-y-4 sm:space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="patient-name" className="text-sm sm:text-base">
-                Nombre del Paciente
-              </Label>
-              <Input
-                id="patient-name"
-                type="text"
-                placeholder="Ingrese el nombre completo"
-                value={patientName}
-                onChange={(e) => handleNameChange(e.target.value)}
-                className="text-sm sm:text-base h-10 sm:h-12"
-                aria-required="true"
-              />
+          <CardContent className="grid gap-3 sm:grid-cols-2">
+            <div className="rounded-md border bg-muted/30 p-3">
+              <div className="mb-1 flex items-center gap-2 text-sm font-medium">
+                <User2 className="h-4 w-4 text-blue-600" />
+                Nombre
+              </div>
+              <div className="text-sm">{user?.name || "—"}</div>
             </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="patient-age" className="text-sm sm:text-base">
-                Edad
-              </Label>
-              <Input
-                id="patient-age"
-                type="number"
-                placeholder="Ingrese la edad en años"
-                value={patientAge}
-                onChange={(e) => handleAgeChange(Number(e.target.value))}
-                min="1"
-                max="120"
-                className="text-sm sm:text-base h-10 sm:h-12"
-                aria-required="true"
-              />
+            <div className="rounded-md border bg-muted/30 p-3">
+              <div className="mb-1 flex items-center gap-2 text-sm font-medium">
+                <Mail className="h-4 w-4 text-blue-600" />
+                Email
+              </div>
+              <div className="text-sm">{user?.email || "—"}</div>
             </div>
+          </CardContent>
+        </Card>
 
-            {isFormValid && (
-              <Card className="bg-blue-50 border-blue-200">
-                <CardContent className="pt-4 sm:pt-6">
-                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-4">
-                    <div className="text-sm sm:text-base text-blue-800">
-                      <p className="font-medium">
-                        Paciente: {patientName} - {patientAge} años
-                      </p>
-                      <p className="mt-1 text-xs sm:text-sm">Duración estimada: 45-60 minutos</p>
+        {/* Tarjeta Paciente */}
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}>
+          <Card className="shadow-sm">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Información del paciente</CardTitle>
+              <CardDescription>Complete los datos para iniciar la evaluación</CardDescription>
+            </CardHeader>
+
+            <CardContent className="space-y-5">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="patient-name">Nombre del paciente</Label>
+                  <Input
+                    id="patient-name"
+                    type="text"
+                    placeholder="Nombre y apellidos"
+                    value={patientName}
+                    onChange={(e) => handleNameChange(e.target.value)}
+                    className="h-11"
+                    aria-required="true"
+                  />
+                  <p className="text-xs text-muted-foreground">Debe introducir un nombre válido.</p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="patient-age">Edad</Label>
+                  <Input
+                    id="patient-age"
+                    type="number"
+                    placeholder="Años"
+                    value={patientAge}
+                    onChange={(e) => handleAgeChange(Number(e.target.value))}
+                    min={1}
+                    max={120}
+                    className="h-11"
+                    aria-required="true"
+                  />
+                  <p className="text-xs text-muted-foreground">Mínimo 16 años para esta batería.</p>
+                </div>
+              </div>
+
+              {/* Aviso de cumplimiento / seguridad */}
+              <Alert className="border-blue-200 bg-blue-50 text-blue-900 dark:border-blue-900/50 dark:bg-blue-950/40 dark:text-blue-100">
+                <ShieldCheck className="h-4 w-4" />
+                <AlertDescription className="text-xs">
+                  La información se procesa de acuerdo con buenas prácticas clínicas y se almacena de forma segura.
+                </AlertDescription>
+              </Alert>
+
+              {/* CTA contextual cuando el formulario es válido */}
+              {isFormValid && (
+                <Card className="border-blue-200 bg-blue-50/60 dark:border-blue-900/30 dark:bg-blue-950/30">
+                  <CardContent className="flex flex-col items-start justify-between gap-3 py-4 sm:flex-row sm:items-center">
+                    <div className="text-sm">
+                      <div className="font-medium">
+                        Paciente: {patientName} — {patientAge} años
+                      </div>
+                      <div className="text-xs text-muted-foreground">Listo para iniciar la evaluación completa.</div>
                     </div>
                     <Button
                       onClick={handleStartSession}
-                      className="bg-blue-600 hover:bg-blue-700 text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-6 w-full sm:w-auto"
+                      className="h-11 w-full bg-blue-600 hover:bg-blue-700 sm:w-auto"
                     >
-                      Iniciar Evaluación
+                      Iniciar evaluación
                     </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </CardContent>
-        </Card>
+                  </CardContent>
+                </Card>
+              )}
+            </CardContent>
+          </Card>
+        </motion.div>
       </div>
     </div>
   )

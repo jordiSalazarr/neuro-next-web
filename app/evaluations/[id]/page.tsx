@@ -16,41 +16,126 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 
 import { Download, ArrowLeft, Info, ListTree, FileText } from "lucide-react"
 
-// ---------- Tipos del modelo (sin cambios) ----------
+// ---------- Tipos del modelo (adaptados a tu backend) ----------
 type LetterCancellation = {
-  pk: string; totalTargets: number; correct: number; errors: number; timeInSecs: number; evaluationId: string;
-  score: { score: number; cpPerMin: number; accuracy: number; omissions: number; omissionsRate: number; commissionRate: number; hitsPerMin: number; errorsPerMin: number; };
-  assistantAnalysis: string; created_at: string;
+  pk: string
+  totalTargets: number
+  correct: number
+  errors: number
+  timeInSecs: number
+  evaluationId: string
+  score: {
+    score: number
+    cpPerMin: number
+    accuracy: number
+    omissions: number
+    omissionsRate: number
+    commissionRate: number
+    hitsPerMin: number
+    errorsPerMin: number
+  }
+  assistantAnalysis?: string
+  created_at: string
 }
+
 type VisualMemory = {
-  pk: string; evaluation_id: string; figure_name: string; image_ref: string; content_type: string; width: number; height: number; image_sha256: string;
-  captured_at: string; status: string;
-  score: { iou: number; ssim: number; psnr: number; finalScore: number; };
-  created_at: string;
+  pk: string
+  evaluation_id: string
+  score: { val: number } // 0..2 (humano)
+  note: { val: string }
+  image_src?: string | null
+  created_at: string
+  updated_at: string
 }
+
 type VerbalMemory = {
-  pk: string; seconds_from_start: number; given_words: string[]; recalled_words: string[]; type: "immediate" | "delayed" | string; evaluation_id: string;
-  score: { score: number; hits: number; omissions: number; intrusions: number; perseverations: number; accuracy: number; intrusionRate: number; perseverationRate: number; };
-  assistan_analysis: string; created_at: string;
+  pk: string
+  seconds_from_start: number
+  given_words: string[]
+  recalled_words: string[]
+  type: "immediate" | "delayed" | string
+  evaluation_id: string
+  score: {
+    score: number
+    hits: number
+    omissions: number
+    intrusions: number
+    perseverations: number
+    accuracy: number
+    intrusionRate: number
+    perseverationRate: number
+  }
+  assistan_analysis?: string
+  created_at: string
 }
+
 type ExecutiveFunctions = {
-  pk: string; numberOfItems: number; totalClicks: number; totalErrors: number; totalCorrect: number; totalTime: number; type: string;
-  score: { score: number; accuracy: number; speedIndex: number; commissionRate: number; durationSec: number; };
-  evaluationId: string; assistantAnalystId: string; createdAt: string;
+  pk: string
+  numberOfItems: number
+  totalClicks: number
+  totalErrors: number
+  totalCorrect: number
+  totalTime: number // ns
+  type: "a" | "a+b" | string
+  score?: {
+    score: number
+    accuracy: number
+    speedIndex: number
+    commissionRate: number
+    durationSec: number
+  }
+  evaluationId: string
+  assistantAnalystId?: string
+  createdAt: string
 }
+
 type LanguageFluency = {
-  pk: string; language: string; proficiency: string; category: string; answer_words: string[] | null; evaluation_id: string;
-  score: { score: number; uniqueValid: number; intrusions: number; perseverations: number; totalProduced: number; wordsPerMinute: number; intrusionRate: number; persevRate: number; };
-  assistant_analysis: string; created_at: string;
+  pk: string
+  language: string
+  proficiency: string
+  category: string
+  answer_words: string[] | null
+  evaluation_id: string
+  score: {
+    score: number
+    uniqueValid: number
+    intrusions: number
+    perseverations: number
+    totalProduced: number
+    wordsPerMinute: number
+    intrusionRate: number
+    persevRate: number
+  }
+  assistant_analysis?: string
+  created_at: string
 }
+
+type VisualSpatial = {
+  id?: string
+  evalautionId?: string // (sic) tal cual en Go
+  score: { val: number } // Shulman 0..5 ó 0..100 según tu flujo
+  note: { val: string }
+  createdAt?: string
+  updatedAt?: string
+}
+
 type Evaluation = {
-  pk: string; patientName: string; patientAge: number; specialistMail: string; specialistId: string; assistantAnalysis: string;
-  storage_url: string; storage_key: string; createdAt: string; currentStatus: string;
-  LetterCancellationSubTest?: LetterCancellation;
-  VisualMemorySubTest?: VisualMemory;
-  VerbalmemorySubTest?: VerbalMemory;
-  ExecutiveFunctionSubTest?: ExecutiveFunctions;
-  LanguageFluencySubTest?: LanguageFluency;
+  pk: string
+  patientName: string
+  patientAge: number
+  specialistMail: string
+  specialistId: string
+  assistantAnalysis: string
+  storage_url: string
+  storage_key: string
+  createdAt: string
+  currentStatus: string
+  LetterCancellationSubTest?: LetterCancellation
+  VisualMemorySubTest?: VisualMemory
+  VerbalmemorySubTest?: VerbalMemory
+  ExecutiveFunctionSubTest?: ExecutiveFunctions[] // << array
+  LanguageFluencySubTest?: LanguageFluency
+  VisualSpatialSubTest?: VisualSpatial
 }
 type ApiResponse = { evaluation: Evaluation; success?: string }
 
@@ -64,11 +149,15 @@ function statusVariant(s: string) {
     default: return "bg-gray-100 text-gray-700"
   }
 }
-function fmtDate(iso: string) {
+function fmtDate(iso?: string) {
+  if (!iso) return "—"
   try { return new Date(iso).toLocaleString() } catch { return iso }
 }
+const clamp = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n))
+const nsToSec = (ns?: number) => (ns ? +(ns / 1e9).toFixed(2) : 0)
+const pct = (v: number) => `${(v * 100).toFixed(0)}%`
+const fmtPct = (v: number) => `${v.toFixed(0)}%`
 
-// Métrica compacta (ahora acepta ReactNode)
 function Metric({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="rounded-lg border bg-card p-3">
@@ -90,6 +179,19 @@ function SectionCard({ title, children, right }: { title: string; children: Reac
       <CardContent>{children}</CardContent>
     </Card>
   )
+}
+
+// ---------- Normalizaciones visuales ----------
+function vmNorm(score0to2?: number) {
+  const s = clamp(score0to2 ?? 0, 0, 2)
+  return Math.round((s / 2) * 100)
+}
+function cdtNorm(raw: number) {
+  if (raw <= 5) {
+    // Shulman 0..5
+    return { scale: "Shulman 0–5", norm: Math.round((clamp(raw, 0, 5) / 5) * 100) }
+  }
+  return { scale: "0–100", norm: clamp(raw, 0, 100) }
 }
 
 export default function Page() {
@@ -141,6 +243,14 @@ export default function Page() {
 
   const ev = data
 
+  // Executive: separa A y A+B
+  const exec = Array.isArray(ev.ExecutiveFunctionSubTest) ? ev.ExecutiveFunctionSubTest : []
+  const tmtA = exec.find((e) => (e.type || "").toLowerCase() === "a")
+  const tmtAB = exec.find((e) => (e.type || "").toLowerCase() === "a+b" || (e.type || "").toLowerCase() === "a_plus_b" || (e.type || "").toLowerCase() === "ab")
+
+  const tmtADur = tmtA?.score?.durationSec ?? nsToSec(tmtA?.totalTime)
+  const tmtBDur = tmtAB?.score?.durationSec ?? nsToSec(tmtAB?.totalTime)
+
   return (
     <TooltipProvider delayDuration={150}>
       {/* ===== Sticky header ===== */}
@@ -149,7 +259,7 @@ export default function Page() {
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <Button variant="ghost" size="sm" onClick={() => router.push("/evaluations")} className="px-2">
+                <Button variant="ghost" size="sm" onClick={() => router.push("/history")} className="px-2">
                   <ArrowLeft className="h-4 w-4 mr-1" /> Volver
                 </Button>
                 <Separator orientation="vertical" className="h-5" />
@@ -224,10 +334,11 @@ export default function Page() {
                 {/* navegación rápida */}
                 <div className="flex flex-wrap gap-2 mb-3 text-xs">
                   {ev.LetterCancellationSubTest && <a href="#sec-letter" className="underline underline-offset-4">Letters Cancellation</a>}
-                  {ev.VisualMemorySubTest && <a href="#sec-visual" className="underline underline-offset-4">Memoria Visual</a>}
-                  {ev.VerbalmemorySubTest && <a href="#sec-verbal" className="underline underline-offset-4">Memoria Verbal</a>}
-                  {ev.ExecutiveFunctionSubTest && <a href="#sec-exec" className="underline underline-offset-4">Funciones Ejecutivas</a>}
-                  {ev.LanguageFluencySubTest && <a href="#sec-lang" className="underline underline-offset-4">Fluencia Verbal</a>}
+                  {ev.VisualMemorySubTest && <a href="#sec-visual" className="underline underline-offset-4">Memoria visual</a>}
+                  {ev.VerbalmemorySubTest && <a href="#sec-verbal" className="underline underline-offset-4">Memoria verbal</a>}
+                  {exec.length > 0 && <a href="#sec-exec" className="underline underline-offset-4">Funciones ejecutivas (TMT)</a>}
+                  {ev.LanguageFluencySubTest && <a href="#sec-lang" className="underline underline-offset-4">Fluencia verbal</a>}
+                  {ev.VisualSpatialSubTest && <a href="#sec-cdt" className="underline underline-offset-4">Clock Drawing Test</a>}
                 </div>
 
                 <Accordion type="multiple" className="w-full">
@@ -241,10 +352,10 @@ export default function Page() {
                           <Metric label="Aciertos" value={ev.LetterCancellationSubTest.correct} />
                           <Metric label="Errores" value={ev.LetterCancellationSubTest.errors} />
                           <Metric label="Tiempo (s)" value={ev.LetterCancellationSubTest.timeInSecs} />
-                          <Metric label="Precisión" value={`${(ev.LetterCancellationSubTest.score.accuracy * 100).toFixed(0)}%`} />
+                          <Metric label="Precisión" value={fmtPct(ev.LetterCancellationSubTest.score.accuracy * 100)} />
                           <Metric label="Omisiones" value={ev.LetterCancellationSubTest.score.omissions} />
-                          <Metric label="Comisiones/min" value={ev.LetterCancellationSubTest.score.errorsPerMin} />
-                          <Metric label="Golpes/min" value={ev.LetterCancellationSubTest.score.hitsPerMin} />
+                          <Metric label="Comisión" value={ev.LetterCancellationSubTest.score.commissionRate.toFixed(2)} />
+                          <Metric label="Golpes/min" value={ev.LetterCancellationSubTest.score.hitsPerMin.toFixed(2)} />
                         </Grid>
                         <div className="mt-2 text-xs text-muted-foreground">
                           Creado: {fmtDate(ev.LetterCancellationSubTest.created_at)}
@@ -253,28 +364,29 @@ export default function Page() {
                     </AccordionItem>
                   )}
 
-                  {/* VISUAL MEMORY */}
+                  {/* VISUAL MEMORY (nueva lógica humana 0–2) */}
                   {ev.VisualMemorySubTest && (
                     <AccordionItem value="visual-memory" id="sec-visual">
-                      <AccordionTrigger className="text-left">Memoria Visual — BVMT-R</AccordionTrigger>
+                      <AccordionTrigger className="text-left">Memoria visual — BVMT-R (0–2 por figura)</AccordionTrigger>
                       <AccordionContent>
                         <Grid cols="md:grid-cols-5">
-                          <Metric label="Figura" value={ev.VisualMemorySubTest.figure_name} />
-                          <Metric label="Estado" value={ev.VisualMemorySubTest.status} />
-                          <Metric label="IoU" value={ev.VisualMemorySubTest.score.iou} />
-                          <Metric label="SSIM" value={ev.VisualMemorySubTest.score.ssim} />
-                          <Metric label="PSNR" value={ev.VisualMemorySubTest.score.psnr} />
-                          <Metric label="Score final" value={ev.VisualMemorySubTest.score.finalScore} />
-                          <Metric label="Ancho×Alto" value={`${ev.VisualMemorySubTest.width}×${ev.VisualMemorySubTest.height}`} />
+                          <Metric label="Puntuación (0–2)" value={ev.VisualMemorySubTest.score?.val ?? "—"} />
+                          <Metric label="Normalizado (0–100)" value={vmNorm(ev.VisualMemorySubTest.score?.val)} />
+                          <Metric label="Nota evaluador" value={ev.VisualMemorySubTest.note?.val || "—"} />
+                          <Metric label="Creado" value={fmtDate(ev.VisualMemorySubTest.created_at)} />
+                          <Metric label="Actualizado" value={fmtDate(ev.VisualMemorySubTest.updated_at)} />
                         </Grid>
-                        <Separator className="my-3" />
-                        <Grid cols="md:grid-cols-2">
-                          <Metric label="Imagen ref" value={<span className="font-mono break-all">{ev.VisualMemorySubTest.image_ref}</span>} />
-                          <Metric label="SHA-256" value={<span className="font-mono break-all">{ev.VisualMemorySubTest.image_sha256}</span>} />
-                        </Grid>
-                        <div className="mt-2 text-xs text-muted-foreground">
-                          Capturada: {fmtDate(ev.VisualMemorySubTest.captured_at)} · Creado: {fmtDate(ev.VisualMemorySubTest.created_at)}
-                        </div>
+                        {ev.VisualMemorySubTest.image_src && (
+                          <>
+                            <Separator className="my-3" />
+                            <div className="text-xs text-muted-foreground mb-2">Copia del paciente</div>
+                            <img
+                              src={ev.VisualMemorySubTest.image_src}
+                              alt="BVMT-R"
+                              className="max-h-80 rounded-lg border"
+                            />
+                          </>
+                        )}
                       </AccordionContent>
                     </AccordionItem>
                   )}
@@ -282,14 +394,14 @@ export default function Page() {
                   {/* VERBAL MEMORY */}
                   {ev.VerbalmemorySubTest && (
                     <AccordionItem value="verbal-memory" id="sec-verbal">
-                      <AccordionTrigger className="text-left">Memoria Verbal</AccordionTrigger>
+                      <AccordionTrigger className="text-left">Memoria verbal</AccordionTrigger>
                       <AccordionContent>
                         <Grid>
                           <Metric label="Score" value={ev.VerbalmemorySubTest.score.score} />
                           <Metric label="Aciertos" value={ev.VerbalmemorySubTest.score.hits} />
                           <Metric label="Omisiones" value={ev.VerbalmemorySubTest.score.omissions} />
                           <Metric label="Intrusiones" value={ev.VerbalmemorySubTest.score.intrusions} />
-                          <Metric label="Exactitud" value={`${(ev.VerbalmemorySubTest.score.accuracy * 100).toFixed(0)}%`} />
+                          <Metric label="Exactitud" value={fmtPct(ev.VerbalmemorySubTest.score.accuracy * 100)} />
                           <Metric label="Tipo" value={ev.VerbalmemorySubTest.type} />
                           <Metric label="Seg desde inicio" value={ev.VerbalmemorySubTest.seconds_from_start} />
                         </Grid>
@@ -309,24 +421,55 @@ export default function Page() {
                     </AccordionItem>
                   )}
 
-                  {/* EXEC FUNCTIONS */}
-                  {ev.ExecutiveFunctionSubTest && (
+                  {/* EXEC FUNCTIONS (dos partes, no agregadas) */}
+                  {exec.length > 0 && (
                     <AccordionItem value="executive-functions" id="sec-exec">
-                      <AccordionTrigger className="text-left">Funciones Ejecutivas — TMT A/B</AccordionTrigger>
+                      <AccordionTrigger className="text-left">Funciones ejecutivas — TMT</AccordionTrigger>
                       <AccordionContent>
-                        <Grid cols="md:grid-cols-6">
-                          <Metric label="Score" value={ev.ExecutiveFunctionSubTest.score.score} />
-                          <Metric label="Índice velocidad" value={ev.ExecutiveFunctionSubTest.score.speedIndex} />
-                          <Metric label="Precisión" value={`${(ev.ExecutiveFunctionSubTest.score.accuracy * 100).toFixed(0)}%`} />
-                          <Metric label="Comisión" value={ev.ExecutiveFunctionSubTest.score.commissionRate} />
-                          <Metric label="Ítems" value={ev.ExecutiveFunctionSubTest.numberOfItems} />
-                          <Metric label="Clicks totales" value={ev.ExecutiveFunctionSubTest.totalClicks} />
-                          <Metric label="Correctos" value={ev.ExecutiveFunctionSubTest.totalCorrect} />
-                          <Metric label="Errores" value={ev.ExecutiveFunctionSubTest.totalErrors} />
-                          <Metric label="Duración (s)" value={ev.ExecutiveFunctionSubTest.score.durationSec} />
-                          <Metric label="Tipo" value={ev.ExecutiveFunctionSubTest.type} />
-                        </Grid>
-                        <div className="mt-2 text-xs text-muted-foreground">Creado: {fmtDate(ev.ExecutiveFunctionSubTest.createdAt)}</div>
+                        {/* TMT-A */}
+                        {tmtA && (
+                          <>
+                            <div className="font-medium mb-2">TMT-A</div>
+                            <Grid cols="md:grid-cols-6">
+                              <Metric label="Score" value={tmtA.score?.score ?? "—"} />
+                              <Metric label="Ítems" value={tmtA.numberOfItems} />
+                              <Metric label="Correctos" value={tmtA.totalCorrect} />
+                              <Metric label="Errores" value={tmtA.totalErrors} />
+                              <Metric label="Clicks" value={tmtA.totalClicks} />
+                              <Metric label="Duración (s)" value={tmtADur} />
+                              <Metric label="Precisión" value={tmtA.score ? fmtPct(tmtA.score.accuracy * 100) : "—"} />
+                              <Metric label="Velocidad" value={tmtA.score?.speedIndex?.toFixed(2) ?? "—"} />
+                              <Metric label="Comisión" value={tmtA.score?.commissionRate?.toFixed(2) ?? "—"} />
+                              <Metric label="Creado" value={fmtDate(tmtA.createdAt)} />
+                              <Metric label="Tipo" value={tmtA.type} />
+                            </Grid>
+                            <Separator className="my-3" />
+                          </>
+                        )}
+
+                        {/* TMT-A+B */}
+                        {tmtAB && (
+                          <>
+                            <div className="font-medium mb-2">TMT-A+B</div>
+                            <Grid cols="md:grid-cols-6">
+                              <Metric label="Score" value={tmtAB.score?.score ?? "—"} />
+                              <Metric label="Ítems" value={tmtAB.numberOfItems} />
+                              <Metric label="Correctos" value={tmtAB.totalCorrect} />
+                              <Metric label="Errores" value={tmtAB.totalErrors} />
+                              <Metric label="Clicks" value={tmtAB.totalClicks} />
+                              <Metric label="Duración (s)" value={tmtBDur} />
+                              <Metric label="Precisión" value={tmtAB.score ? fmtPct(tmtAB.score.accuracy * 100) : "—"} />
+                              <Metric label="Velocidad" value={tmtAB.score?.speedIndex?.toFixed(2) ?? "—"} />
+                              <Metric label="Comisión" value={tmtAB.score?.commissionRate?.toFixed(2) ?? "—"} />
+                              <Metric label="Creado" value={fmtDate(tmtAB.createdAt)} />
+                              <Metric label="Tipo" value={tmtAB.type} />
+                            </Grid>
+                          </>
+                        )}
+
+                        {!tmtA && !tmtAB && (
+                          <div className="text-sm text-muted-foreground">No hay registros de TMT-A / TMT-A+B.</div>
+                        )}
                       </AccordionContent>
                     </AccordionItem>
                   )}
@@ -334,7 +477,7 @@ export default function Page() {
                   {/* LANGUAGE FLUENCY */}
                   {ev.LanguageFluencySubTest && (
                     <AccordionItem value="language-fluency" id="sec-lang">
-                      <AccordionTrigger className="text-left">Fluencia Verbal</AccordionTrigger>
+                      <AccordionTrigger className="text-left">Fluencia verbal</AccordionTrigger>
                       <AccordionContent>
                         <Grid cols="md:grid-cols-6">
                           <Metric label="Score" value={ev.LanguageFluencySubTest.score.score} />
@@ -352,6 +495,33 @@ export default function Page() {
                           </div>
                         )}
                         <div className="mt-2 text-xs text-muted-foreground">Creado: {fmtDate(ev.LanguageFluencySubTest.created_at)}</div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  )}
+
+                  {/* VISUAL-SPATIAL / CDT */}
+                  {ev.VisualSpatialSubTest && (
+                    <AccordionItem value="visual-spatial" id="sec-cdt">
+                      <AccordionTrigger className="text-left">Clock Drawing Test (CDT)</AccordionTrigger>
+                      <AccordionContent>
+                        {(() => {
+                          const raw = ev.VisualSpatialSubTest?.score?.val ?? 0
+                          const { scale, norm } = cdtNorm(raw)
+                          return (
+                            <>
+                              <Grid cols="md:grid-cols-5">
+                                <Metric label="Puntuación bruta" value={raw} />
+                                <Metric label="Escala" value={scale} />
+                                <Metric label="Normalizado (0–100)" value={norm} />
+                                <Metric label="Nota" value={ev.VisualSpatialSubTest?.note?.val || "—"} />
+                                <Metric label="Actualizado" value={fmtDate(ev.VisualSpatialSubTest?.updatedAt)} />
+                              </Grid>
+                              <div className="mt-2 text-xs text-muted-foreground">
+                                Creado: {fmtDate(ev.VisualSpatialSubTest?.createdAt)}
+                              </div>
+                            </>
+                          )
+                        })()}
                       </AccordionContent>
                     </AccordionItem>
                   )}
