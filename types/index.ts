@@ -67,4 +67,4 @@ export interface SubtestProps {
   onPause: () => void
 }
 
-export type AppScreen = "login" | "patient-selection" | "test-runner" | "results"
+export type AppScreen = "login" | "patient-selection" | "test-runner" | "results" |"home"

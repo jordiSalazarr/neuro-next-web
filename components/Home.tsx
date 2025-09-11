@@ -63,9 +63,6 @@ const cognitoGetTokensUrl = process.env.NEXT_PUBLIC_COGNITO_GET_TOKEN_URL ||""
       })  
        })
 }, [])
-const handleShowHistory = () => {
-  router.push("/history")
-}
 
  return (
     <div className="relative min-h-screen bg-gradient-to-b from-slate-50 to-white dark:from-slate-900 dark:to-slate-950">
