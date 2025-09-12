@@ -109,6 +109,7 @@ export default function PatientSelectionScreen() {
         patientName: response.data.evaluation.patientName,
       }
       setCurrentEvaluation(evaluation)
+      router.push("/test-runner")
     } catch (error: any) {
       console.error("❌ Error enviando evaluación:", error.response?.data || error.message)
     }
@@ -137,7 +138,6 @@ export default function PatientSelectionScreen() {
       dispatch({ type: "SELECT_PATIENT", payload: newPatient })
       dispatch({ type: "START_SESSION", payload: newSession })
       await createNewEvaluation()
-      router.push("/test-runner")
     } catch (error) {
       console.log(error)
     }
