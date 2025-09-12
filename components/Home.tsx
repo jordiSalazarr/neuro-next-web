@@ -29,13 +29,13 @@ const HomeScreen= () => {
   const code = url.searchParams.get("code")
   console.log(code)
   if (!code) return
-
+const redirectUri = `${window.location.origin}/home`;
   const verifier = sessionStorage.getItem("pkce_verifier") || ""
   const body = new URLSearchParams({
     grant_type: "authorization_code",
     client_id:process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID||"",
     code,
-    redirect_uri:process.env.NEXT_PUBLIC_COGNITO_REDIRECT_URI||"",
+    redirect_uri:redirectUri,
     code_verifier: verifier,
   })
 const cognitoGetTokensUrl = process.env.NEXT_PUBLIC_COGNITO_GET_TOKEN_URL ||""
