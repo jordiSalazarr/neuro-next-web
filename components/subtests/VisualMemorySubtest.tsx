@@ -9,7 +9,7 @@ import { Progress } from "@/components/ui/progress"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import type { SubtestProps } from "@/types"
+import type { SubtestProps, SubtestResult } from "@/types"
 import { useEvaluationStore } from "@/stores/evaluation"
 
 type ShapeType = "circle" | "square" | "triangle"
@@ -252,7 +252,21 @@ const currentEvaluationId = useEvaluationStore(state=>state.currentEvaluation?.i
         // Si usas auth: headers: { Authorization: `Bearer ${token}` }
       })
       setPhase("completed")
-      // onComplete?.(payload)
+      const apiPayload = {
+  evaluation_id: currentEvaluationId,
+  score_id: Number(score),
+  note: note?.trim() ?? "",
+}
+
+const subtestResult: Omit<SubtestResult, "subtestId" | "name"> = {
+  startTime: new Date(),
+  score: apiPayload.score_id,
+  errors: 0,
+  timeSpent: 0,
+  rawData: apiPayload,
+}
+
+onComplete?.(subtestResult)
     } catch (err: any) {
       const msg =
         err?.response?.data?.message ||

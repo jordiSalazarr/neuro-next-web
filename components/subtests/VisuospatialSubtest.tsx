@@ -321,12 +321,6 @@ export function VisuospatialSubtest({
               <li>• Use el ratón o el dedo para dibujar.</li>
             </ul>
           </div>
-
-          <div className="grid gap-2">
-            <Label htmlFor="api">API Base URL</Label>
-            <Input id="api" value={apiUrl} onChange={(e) => setApiUrl(e.target.value)} />
-          </div>
-
           <Button onClick={startSubtest} className="w-full" size="lg">
             Comenzar
           </Button>
