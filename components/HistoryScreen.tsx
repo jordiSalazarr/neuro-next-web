@@ -182,6 +182,16 @@ export default function EvaluationsSearch() {
           <div className="mx-auto max-w-6xl px-3 sm:px-4">
             <div className="py-3 flex flex-col gap-3">
               <div className="flex items-center justify-between">
+                {/* Botón volver al inicio */}
+        <div className="flex items-center gap-2">
+          <Link href="/home">
+            <Button variant="default" size="sm" className="bg-blue-600 hover:bg-blue-700 text-white">
+              Volver al inicio
+            </Button>
+          </Link>
+          <h2 className="text-base sm:text-lg font-semibold">Buscador de evaluaciones</h2>
+          <span className="text-xs text-muted-foreground">({count || 0} totales)</span>
+        </div>
                 <div className="flex items-center gap-2">
                   <h2 className="text-base sm:text-lg font-semibold">Buscador de evaluaciones</h2>
                   <span className="text-xs text-muted-foreground">({count || 0} totales)</span>
