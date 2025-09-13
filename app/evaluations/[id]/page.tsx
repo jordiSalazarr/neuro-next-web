@@ -12,7 +12,7 @@ import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Skeleton } from "@/components/ui/skeleton"
 
-import { Download, ArrowLeft, Info, ListTree, FileText } from "lucide-react"
+import { Download, ArrowLeft, Info, ListTree, FileText, AlertTriangle, CheckCircle } from "lucide-react"
 import { TooltipProvider } from "@/components/ui/tooltip"
 
 // ---------- Tipos del modelo (adaptados a tu backend) ----------
@@ -40,8 +40,8 @@ type LetterCancellation = {
 type VisualMemory = {
   pk: string
   evaluation_id: string
-  score: { val: number } // 0..2 (humano)
-  note: { val: string }
+  score: { Val: number } // 0..2 (humano)
+  note: { Val: string }
   image_src?: string | null
   created_at: string
   updated_at: string
@@ -112,8 +112,8 @@ type LanguageFluency = {
 type VisualSpatial = {
   id?: string
   evalautionId?: string // (sic) tal cual en Go
-  score: { val: number } // Shulman 0..5 ó 0..100 según tu flujo
-  note: { val: string }
+  Score: { Val: number } // Shulman 0..5 ó 0..100 según tu flujo
+  Note: { Val: string }
   createdAt?: string
   updatedAt?: string
 }
@@ -136,21 +136,30 @@ type Evaluation = {
   LanguageFluencySubTest?: LanguageFluency
   VisualSpatialSubTest?: VisualSpatial
 }
+
 type ApiResponse = { evaluation: Evaluation; success?: string }
 
 // ---------- Utils UI ----------
 function statusVariant(s: string) {
   switch (s) {
-    case "CREATED": return "bg-slate-100 text-slate-700"
-    case "IN_PROGRESS": return "bg-amber-100 text-amber-800"
+    case "CREATED":
+      return "bg-slate-100 text-slate-700"
+    case "IN_PROGRESS":
+      return "bg-amber-100 text-amber-800"
     case "COMPLETED":
-    case "FINISHED": return "bg-emerald-100 text-emerald-800"
-    default: return "bg-gray-100 text-gray-700"
+    case "FINISHED":
+      return "bg-emerald-100 text-emerald-800"
+    default:
+      return "bg-gray-100 text-gray-700"
   }
 }
 function fmtDate(iso?: string) {
   if (!iso) return "—"
-  try { return new Date(iso).toLocaleString() } catch { return iso }
+  try {
+    return new Date(iso).toLocaleString()
+  } catch {
+    return iso
+  }
 }
 const clamp = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n))
 const nsToSec = (ns?: number) => (ns ? +(ns / 1e9).toFixed(2) : 0)
@@ -192,6 +201,20 @@ function cdtNorm(raw: number) {
   return { scale: "0–100", norm: clamp(raw, 0, 100) }
 }
 
+function kpiToneFromPct(pct?: number) {
+  if (pct == null) return "bg-muted text-foreground"
+  if (pct >= 75) return "bg-emerald-100 text-emerald-800"
+  if (pct >= 40) return "bg-amber-100 text-amber-800"
+  return "bg-rose-100 text-rose-800"
+}
+
+function durationTone(sec?: number, hardMax?: number) {
+  if (sec == null) return "bg-muted text-foreground"
+  if (hardMax && sec > hardMax) return "bg-rose-100 text-rose-800"
+  if (sec <= (hardMax ?? 9999) * 0.5) return "bg-emerald-100 text-emerald-800"
+  return "bg-amber-100 text-amber-800"
+}
+
 export default function Page() {
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
@@ -215,13 +238,17 @@ export default function Page() {
       })
       .catch((e) => !cancelled && setError(e.message || "Error cargando evaluación"))
       .finally(() => !cancelled && setLoading(false))
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
   }, [url])
 
   if (loading) {
     return (
       <Card className="border-0 shadow-sm">
-        <CardHeader><CardTitle>Cargando evaluación…</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle>Cargando evaluación…</CardTitle>
+        </CardHeader>
         <CardContent className="space-y-3">
           <Skeleton className="h-7 w-56" />
           <Skeleton className="h-4 w-32" />
@@ -233,7 +260,9 @@ export default function Page() {
   if (error || !data) {
     return (
       <Card className="border-0 shadow-sm">
-        <CardHeader><CardTitle>Error</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle>Error</CardTitle>
+        </CardHeader>
         <CardContent className="text-destructive">No se pudo cargar la evaluación: {error}</CardContent>
       </Card>
     )
@@ -244,11 +273,37 @@ export default function Page() {
   // Executive: separa A y A+B
   const exec = Array.isArray(ev.ExecutiveFunctionSubTest) ? ev.ExecutiveFunctionSubTest : []
   const tmtA = exec.find((e) => (e.type || "").toLowerCase() === "a")
-  const tmtAB = exec.find((e) => (e.type || "").toLowerCase() === "a+b" || (e.type || "").toLowerCase() === "a_plus_b" || (e.type || "").toLowerCase() === "ab")
+  const tmtAB = exec.find(
+    (e) => (e.type || "").toLowerCase() === "a+b" || (e.type || "").toLowerCase() === "a_plus_b" || (e.type || "").toLowerCase() === "ab"
+  )
 
   const tmtADur = tmtA?.score?.durationSec ?? nsToSec(tmtA?.totalTime)
   const tmtBDur = tmtAB?.score?.durationSec ?? nsToSec(tmtAB?.totalTime)
 
+  // Verb. memory helpers (para UX solicitada)
+  const verbalHits = ev.VerbalmemorySubTest?.score?.hits
+  const verbalErrors = (ev.VerbalmemorySubTest?.score?.intrusions ?? 0) + (ev.VerbalmemorySubTest?.score?.perseverations ?? 0)
+  const verbalTimeSec = (ev.VerbalmemorySubTest as any)?.durationSec ?? (ev.VerbalmemorySubTest as any)?.score?.durationSec
+
+  // Visual memory normalized (solo para semáforo de UX; detalle se muestra 0–2 únicamente)
+  const vmRaw02 = ev.VisualMemorySubTest?.score?.Val
+  const vmPct = vmRaw02 != null ? vmNorm(vmRaw02) : undefined
+
+  // Quick KPI Card
+  function Kpi({ title, value, tone = "bg-muted text-foreground", href }: { title: string; value: React.ReactNode; tone?: string; href?: string }) {
+    const inner = (
+      <div className={`rounded-xl px-3 py-2 text-sm ${tone}`}>
+        <div className="text-[10px] uppercase tracking-wide opacity-80">{title}</div>
+        <div className="font-semibold">{value}</div>
+      </div>
+    )
+    return href ? (
+      <a href={href} className="block hover:opacity-90 transition-opacity">{inner}</a>
+    ) : (
+      inner
+    )
+  }
+console.log("evaluation: ",ev)
   return (
     <TooltipProvider delayDuration={150}>
       {/* ===== Sticky header ===== */}
@@ -301,6 +356,100 @@ export default function Page() {
           </Grid>
         </SectionCard>
 
+        {/* FOTO RÁPIDA (UX): KPIs por subtest */}
+        <SectionCard title="Foto rápida — por subtest" right={null}>
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+            {/* Atención */}
+            {ev.LetterCancellationSubTest ? (
+              <Kpi
+                title="Atención"
+                value={
+                  <div className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4" />
+                    <span>Score {ev.LetterCancellationSubTest.score.score}</span>
+                    <span className={`ml-auto text-xs rounded px-1 ${kpiToneFromPct(ev.LetterCancellationSubTest.score.accuracy * 100)}`}>
+                      {fmtPct(ev.LetterCancellationSubTest.score.accuracy * 100)}
+                    </span>
+                  </div>
+                }
+                href="#sec-letter"
+              />
+            ) : (
+              <Kpi title="Atención" value="—" />
+            )}
+
+            {/* Memoria visual (usar solo 0–2) */}
+            {ev.VisualMemorySubTest ? (
+              <Kpi
+                title="Memoria visual"
+                value={
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono">{ev.VisualMemorySubTest.score?.Val}</span>
+                    <span className={`ml-auto text-xs rounded px-1 ${kpiToneFromPct(vmPct)}`}>{vmPct != null ? `${vmPct}%` : ""}</span>
+                  </div>
+                }
+                href="#sec-visual"
+              />
+            ) : (
+              <Kpi title="Memoria visual" value="—" />
+            )}
+
+            {/* Memoria verbal (aciertos, errores, tiempo) */}
+            {ev.VerbalmemorySubTest ? (
+              <Kpi
+                title="Memoria verbal"
+                value={
+                  <div className="flex items-center gap-2">
+                    <span>Aciertos {verbalHits ?? "—"}</span>
+                    <span className="text-rose-700">Errores {verbalErrors}</span>
+                    <span className="ml-auto text-xs">{verbalTimeSec != null ? `${verbalTimeSec}s` : "s/d"}</span>
+                  </div>
+                }
+                href="#sec-verbal"
+              />
+            ) : (
+              <Kpi title="Memoria verbal" value="—" />
+            )}
+
+            {/* TMT */}
+            {tmtA || tmtAB ? (
+              <Kpi
+                title="Funciones ejecutivas"
+                value={
+                  <div className="flex flex-col gap-1">
+                    {tmtA ? (
+                      <div className={`flex items-center gap-2 ${durationTone(tmtADur, 150)} rounded px-1`}>
+                        <span className="text-xs">A</span>
+                        <span className="ml-auto text-xs">{tmtADur}s</span>
+                      </div>
+                    ) : (
+                      <div className="text-xs opacity-70">A: s/d</div>
+                    )}
+                    {tmtAB ? (
+                      <div className={`flex items-center gap-2 ${durationTone(tmtBDur, 300)} rounded px-1`}>
+                        <span className="text-xs">A+B</span>
+                        <span className="ml-auto text-xs">{tmtBDur}s</span>
+                      </div>
+                    ) : (
+                      <div className="text-xs opacity-70">A+B: s/d</div>
+                    )}
+                  </div>
+                }
+                href="#sec-exec"
+              />
+            ) : (
+              <Kpi title="Funciones ejecutivas" value="—" />
+            )}
+
+            {/* CDT */}
+            {ev.VisualSpatialSubTest ? (
+              <Kpi title="Clock Drawing (0-5)" value={<span>Nota {ev.VisualSpatialSubTest.Score?.Val ?? "—"}</span>} href="#sec-cdt" />
+            ) : (
+              <Kpi title="Clock Drawing (0-5)" value="—" />
+            )}
+          </div>
+        </SectionCard>
+
         {/* TABS */}
         <Card className="border-0 shadow-sm">
           <CardHeader className="pb-2">
@@ -309,16 +458,20 @@ export default function Page() {
           <CardContent>
             <Tabs defaultValue="subtests" className="w-full">
               <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="summary"><ListTree className="h-4 w-4 mr-2" /> Resumen</TabsTrigger>
-                <TabsTrigger value="subtests"><FileText className="h-4 w-4 mr-2" /> Subtests</TabsTrigger>
-                <TabsTrigger value="analysis"><Info className="h-4 w-4 mr-2" /> Análisis</TabsTrigger>
+                <TabsTrigger value="summary">
+                  <ListTree className="h-4 w-4 mr-2" /> Resumen
+                </TabsTrigger>
+                <TabsTrigger value="subtests">
+                  <FileText className="h-4 w-4 mr-2" /> Subtests
+                </TabsTrigger>
+                <TabsTrigger value="analysis">
+                  <Info className="h-4 w-4 mr-2" /> Análisis
+                </TabsTrigger>
               </TabsList>
 
               {/* TAB: RESUMEN */}
               <TabsContent value="summary" className="mt-4">
-                <div className="text-sm text-muted-foreground">
-                  Vista rápida de campos clave y estado de documento.
-                </div>
+                <div className="text-sm text-muted-foreground">Vista rápida de campos clave y estado de documento.</div>
                 <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
                   <Metric label="Estado" value={ev.currentStatus} />
                   <Metric label="Documento" value={ev.storage_url ? "Disponible" : "Sin documento"} />
@@ -331,16 +484,40 @@ export default function Page() {
               <TabsContent value="subtests" className="mt-4">
                 {/* navegación rápida */}
                 <div className="flex flex-wrap gap-2 mb-3 text-xs">
-                  {ev.LetterCancellationSubTest && <a href="#sec-letter" className="underline underline-offset-4">Letters Cancellation</a>}
-                  {ev.VisualMemorySubTest && <a href="#sec-visual" className="underline underline-offset-4">Memoria visual</a>}
-                  {ev.VerbalmemorySubTest && <a href="#sec-verbal" className="underline underline-offset-4">Memoria verbal</a>}
-                  {exec.length > 0 && <a href="#sec-exec" className="underline underline-offset-4">Funciones ejecutivas (TMT)</a>}
-                  {ev.LanguageFluencySubTest && <a href="#sec-lang" className="underline underline-offset-4">Fluencia verbal</a>}
-                  {ev.VisualSpatialSubTest && <a href="#sec-cdt" className="underline underline-offset-4">Clock Drawing Test</a>}
+                  {ev.LetterCancellationSubTest && (
+                    <a href="#sec-letter" className="underline underline-offset-4">
+                      Letters Cancellation
+                    </a>
+                  )}
+                  {ev.VisualMemorySubTest && (
+                    <a href="#sec-visual" className="underline underline-offset-4">
+                      Memoria visual
+                    </a>
+                  )}
+                  {ev.VerbalmemorySubTest && (
+                    <a href="#sec-verbal" className="underline underline-offset-4">
+                      Memoria verbal
+                    </a>
+                  )}
+                  {exec.length > 0 && (
+                    <a href="#sec-exec" className="underline underline-offset-4">
+                      Funciones ejecutivas (TMT)
+                    </a>
+                  )}
+                  {ev.LanguageFluencySubTest && (
+                    <a href="#sec-lang" className="underline underline-offset-4">
+                      Fluencia verbal
+                    </a>
+                  )}
+                  {ev.VisualSpatialSubTest && (
+                    <a href="#sec-cdt" className="underline underline-offset-4">
+                      Clock Drawing Test
+                    </a>
+                  )}
                 </div>
 
                 <Accordion type="multiple" className="w-full">
-                  {/* LETTER CANCELLATION */}
+                  {/* LETTER CANCELLATION (dejar igual) */}
                   {ev.LetterCancellationSubTest && (
                     <AccordionItem value="letter-cancellation" id="sec-letter">
                       <AccordionTrigger className="text-left">Atención Sostenida — Letters Cancellation</AccordionTrigger>
@@ -355,71 +532,42 @@ export default function Page() {
                           <Metric label="Comisión" value={ev.LetterCancellationSubTest.score.commissionRate.toFixed(2)} />
                           <Metric label="Golpes/min" value={ev.LetterCancellationSubTest.score.hitsPerMin.toFixed(2)} />
                         </Grid>
-                        <div className="mt-2 text-xs text-muted-foreground">
-                          Creado: {fmtDate(ev.LetterCancellationSubTest.created_at)}
-                        </div>
+                        <div className="mt-2 text-xs text-muted-foreground">Creado: {fmtDate(ev.LetterCancellationSubTest.created_at)}</div>
                       </AccordionContent>
                     </AccordionItem>
                   )}
 
-                  {/* VISUAL MEMORY (nueva lógica humana 0–2) */}
+                  {/* VISUAL MEMORY (AHORA: SOLO 0–2) */}
                   {ev.VisualMemorySubTest && (
                     <AccordionItem value="visual-memory" id="sec-visual">
-                      <AccordionTrigger className="text-left">Memoria visual — BVMT-R (0–2 por figura)</AccordionTrigger>
+                      <AccordionTrigger className="text-left">Memoria visual — BVMT-R</AccordionTrigger>
                       <AccordionContent>
-                        <Grid cols="md:grid-cols-5">
-                          <Metric label="Puntuación (0–2)" value={ev.VisualMemorySubTest.score?.val ?? "—"} />
-                          <Metric label="Normalizado (0–100)" value={vmNorm(ev.VisualMemorySubTest.score?.val)} />
-                          <Metric label="Nota evaluador" value={ev.VisualMemorySubTest.note?.val || "—"} />
-                          <Metric label="Creado" value={fmtDate(ev.VisualMemorySubTest.created_at)} />
-                          <Metric label="Actualizado" value={fmtDate(ev.VisualMemorySubTest.updated_at)} />
+                        <Grid cols="md:grid-cols-3">
+                          <Metric label="Puntuación (0–2)" value={ev.VisualMemorySubTest.score?.Val ?? "—"} />
+                          <Metric label="Comentario" value={ev.VisualMemorySubTest.note?.Val ?? "—"} />
+                          {/* En cumplimiento de la solicitud: ocultamos nota, normalizado, fechas e imagen */}
                         </Grid>
-                        {ev.VisualMemorySubTest.image_src && (
-                          <>
-                            <Separator className="my-3" />
-                            <div className="text-xs text-muted-foreground mb-2">Copia del paciente</div>
-                            <img
-                              src={ev.VisualMemorySubTest.image_src}
-                              alt="BVMT-R"
-                              className="max-h-80 rounded-lg border"
-                            />
-                          </>
-                        )}
                       </AccordionContent>
                     </AccordionItem>
                   )}
 
-                  {/* VERBAL MEMORY */}
+                  {/* VERBAL MEMORY (SOLO: aciertos, errores, tiempo) */}
                   {ev.VerbalmemorySubTest && (
                     <AccordionItem value="verbal-memory" id="sec-verbal">
                       <AccordionTrigger className="text-left">Memoria verbal</AccordionTrigger>
                       <AccordionContent>
-                        <Grid>
-                          <Metric label="Score" value={ev.VerbalmemorySubTest.score.score} />
-                          <Metric label="Aciertos" value={ev.VerbalmemorySubTest.score.hits} />
-                          <Metric label="Omisiones" value={ev.VerbalmemorySubTest.score.omissions} />
-                          <Metric label="Intrusiones" value={ev.VerbalmemorySubTest.score.intrusions} />
-                          <Metric label="Exactitud" value={fmtPct(ev.VerbalmemorySubTest.score.accuracy * 100)} />
+                        <Grid cols="md:grid-cols-4">
+                          <Metric label="Aciertos" value={verbalHits ?? "—"} />
+                          <Metric label="Errores (intr+persev)" value={verbalErrors} />
+                          <Metric label="Tiempo (s)" value={ev.VerbalmemorySubTest.seconds_from_start || "—"} />
                           <Metric label="Tipo" value={ev.VerbalmemorySubTest.type} />
-                          <Metric label="Seg desde inicio" value={ev.VerbalmemorySubTest.seconds_from_start} />
                         </Grid>
-                        <Separator className="my-3" />
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                          <div>
-                            <div className="text-xs text-muted-foreground mb-1">Lista presentada</div>
-                            <div className="rounded-md border p-3 text-sm">{ev.VerbalmemorySubTest.given_words.join(", ")}</div>
-                          </div>
-                          <div>
-                            <div className="text-xs text-muted-foreground mb-1">Recordadas</div>
-                            <div className="rounded-md border p-3 text-sm">{ev.VerbalmemorySubTest.recalled_words.join(", ")}</div>
-                          </div>
-                        </div>
-                        <div className="mt-2 text-xs text-muted-foreground">Creado: {fmtDate(ev.VerbalmemorySubTest.created_at)}</div>
+                        {/* Ocultamos listas de palabras, omisiones, intrusiones detalladas, exactitud, etc. */}
                       </AccordionContent>
                     </AccordionItem>
                   )}
 
-                  {/* EXEC FUNCTIONS (dos partes, no agregadas) */}
+                  {/* EXEC FUNCTIONS (dejar igual) */}
                   {exec.length > 0 && (
                     <AccordionItem value="executive-functions" id="sec-exec">
                       <AccordionTrigger className="text-left">Funciones ejecutivas — TMT</AccordionTrigger>
@@ -427,7 +575,16 @@ export default function Page() {
                         {/* TMT-A */}
                         {tmtA && (
                           <>
-                            <div className="font-medium mb-2">TMT-A</div>
+                            <div className="font-medium mb-2 flex items-center gap-2">
+                              <span>TMT-A</span>
+                              {tmtADur != null && (
+                                tmtADur > 150 ? (
+                                  <span className="inline-flex items-center gap-1 text-rose-700 text-xs"><AlertTriangle className="h-3 w-3" /> &gt;150s</span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 text-emerald-700 text-xs"><CheckCircle className="h-3 w-3" /> OK</span>
+                                )
+                              )}
+                            </div>
                             <Grid cols="md:grid-cols-6">
                               <Metric label="Score" value={tmtA.score?.score ?? "—"} />
                               <Metric label="Ítems" value={tmtA.numberOfItems} />
@@ -448,7 +605,16 @@ export default function Page() {
                         {/* TMT-A+B */}
                         {tmtAB && (
                           <>
-                            <div className="font-medium mb-2">TMT-A+B</div>
+                            <div className="font-medium mb-2 flex items-center gap-2">
+                              <span>TMT-A+B</span>
+                              {tmtBDur != null && (
+                                tmtBDur > 300 ? (
+                                  <span className="inline-flex items-center gap-1 text-rose-700 text-xs"><AlertTriangle className="h-3 w-3" /> &gt;300s</span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 text-emerald-700 text-xs"><CheckCircle className="h-3 w-3" /> OK</span>
+                                )
+                              )}
+                            </div>
                             <Grid cols="md:grid-cols-6">
                               <Metric label="Score" value={tmtAB.score?.score ?? "—"} />
                               <Metric label="Ítems" value={tmtAB.numberOfItems} />
@@ -465,14 +631,12 @@ export default function Page() {
                           </>
                         )}
 
-                        {!tmtA && !tmtAB && (
-                          <div className="text-sm text-muted-foreground">No hay registros de TMT-A / TMT-A+B.</div>
-                        )}
+                        {!tmtA && !tmtAB && <div className="text-sm text-muted-foreground">No hay registros de TMT-A / TMT-A+B.</div>}
                       </AccordionContent>
                     </AccordionItem>
                   )}
 
-                  {/* LANGUAGE FLUENCY */}
+                  {/* LANGUAGE FLUENCY (sin cambios) */}
                   {ev.LanguageFluencySubTest && (
                     <AccordionItem value="language-fluency" id="sec-lang">
                       <AccordionTrigger className="text-left">Fluencia verbal</AccordionTrigger>
@@ -497,29 +661,16 @@ export default function Page() {
                     </AccordionItem>
                   )}
 
-                  {/* VISUAL-SPATIAL / CDT */}
+                  {/* VISUAL-SPATIAL / CDT (AHORA: SOLO NOTA) */}
                   {ev.VisualSpatialSubTest && (
                     <AccordionItem value="visual-spatial" id="sec-cdt">
                       <AccordionTrigger className="text-left">Clock Drawing Test (CDT)</AccordionTrigger>
                       <AccordionContent>
-                        {(() => {
-                          const raw = ev.VisualSpatialSubTest?.score?.val ?? 0
-                          const { scale, norm } = cdtNorm(raw)
-                          return (
-                            <>
-                              <Grid cols="md:grid-cols-5">
-                                <Metric label="Puntuación bruta" value={raw} />
-                                <Metric label="Escala" value={scale} />
-                                <Metric label="Normalizado (0–100)" value={norm} />
-                                <Metric label="Nota" value={ev.VisualSpatialSubTest?.note?.val || "—"} />
-                                <Metric label="Actualizado" value={fmtDate(ev.VisualSpatialSubTest?.updatedAt)} />
-                              </Grid>
-                              <div className="mt-2 text-xs text-muted-foreground">
-                                Creado: {fmtDate(ev.VisualSpatialSubTest?.createdAt)}
-                              </div>
-                            </>
-                          )
-                        })()}
+                        <Grid cols="md:grid-cols-3">
+                          <Metric label="Nota" value={ev.VisualSpatialSubTest?.Score?.Val || "—"} />
+                          <Metric label="Comentario" value={ev.VisualSpatialSubTest?.Note?.Val || "—"} />
+                        </Grid>
+                        {/* Se ocultan score bruto, escala, normalizado y fechas */}
                       </AccordionContent>
                     </AccordionItem>
                   )}
