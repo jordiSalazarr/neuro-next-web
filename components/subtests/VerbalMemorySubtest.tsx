@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -9,7 +9,6 @@ import { Volume2, CheckCircle2 } from "lucide-react";
 import axios from "axios";
 import { useEvaluationStore } from "@/stores/evaluation";
 
-// ⬇️ Ajusta la lista a la que realmente vayas a presentar (ejemplo basado en tu JSON)
 const WORD_LIST = [
   "pera",
   "manzana",
@@ -25,40 +24,136 @@ const WORD_LIST = [
   "caballo",
 ];
 
-// Props mínimas (compatibles con tu TestRunner/route-shell: onComplete opcional)
 interface SubtestProps {
   onComplete?: (result: any) => void;
   onPause?: () => void;
 }
 
 export function VerbalMemorySubtest({ onComplete, onPause }: SubtestProps) {
-  // FASES reducidas a 1 sola prueba: instrucciones → escucha → recuerdo → completado
   type Phase = "instructions" | "listening" | "recall" | "completed";
   const [phase, setPhase] = useState<Phase>("instructions");
   const [isPlaying, setIsPlaying] = useState(false);
   const [recallText, setRecallText] = useState("");
   const [startAt, setStartAt] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const postedRef = useRef(false); // guarda frente a dobles POST
+  const postedRef = useRef(false);
 
   const evaluationId = useEvaluationStore((s) => s.currentEvaluation?.id);
 
-  const begin = () => {
-    setPhase("listening");
-    const nowISO = new Date().toISOString();
-    setStartAt(nowISO);
+  // ---- TTS state/refs ----
+  const voicesRef = useRef<SpeechSynthesisVoice[] | null>(null);
+  const cancelingRef = useRef(false);
+
+  const hasSpeech =
+    typeof window !== "undefined" && typeof window.speechSynthesis !== "undefined";
+
+  // Carga las voces (algunos navegadores tardan en exponerlas).
+  useEffect(() => {
+    if (!hasSpeech) return;
+    const load = () => {
+      const v = window.speechSynthesis.getVoices();
+      if (v && v.length) voicesRef.current = v;
+    };
+    load();
+    window.speechSynthesis.addEventListener?.("voiceschanged", load);
+    return () => {
+      window.speechSynthesis.removeEventListener?.("voiceschanged", load);
+    };
+  }, [hasSpeech]);
+
+  // Cancela cualquier síntesis si se desmonta o se cambia de fase
+  useEffect(() => {
+    return () => {
+      if (hasSpeech) {
+        cancelingRef.current = true;
+        window.speechSynthesis.cancel();
+        cancelingRef.current = false;
+      }
+    };
+  }, [hasSpeech]);
+
+  const pickVoice = (): SpeechSynthesisVoice | undefined => {
+    const voices = voicesRef.current || window.speechSynthesis.getVoices();
+    if (!voices || voices.length === 0) return undefined;
+    // Preferencias: es-ES / es- / latam, luego cualquier cosa
+    const prefer = (pred: (v: SpeechSynthesisVoice) => boolean) =>
+      voices.find(pred);
+    return (
+      prefer((v) => /^(es-ES|es-419|es-MX|es-AR|es-CO|es)/i.test(v.lang)) ||
+      prefer((v) => /spanish/i.test(v.name)) ||
+      voices[0]
+    );
   };
 
-  const playListOnce = () => {
+  const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+  const speakOnce = (text: string, opts?: Partial<SpeechSynthesisUtterance>) =>
+    new Promise<void>((resolve, reject) => {
+      if (!hasSpeech) return reject(new Error("speechSynthesis no soportado"));
+      const u = new SpeechSynthesisUtterance(text);
+      const voice = pickVoice();
+      if (voice) u.voice = voice;
+      u.lang = voice?.lang || "es-ES";
+      u.rate = opts?.rate ?? 0.95;  // un poco más lento mejora comprensión
+      u.pitch = opts?.pitch ?? 1.0;
+      u.volume = opts?.volume ?? 1.0;
+
+      u.onend = () => resolve();
+      u.onerror = (e) => reject(e.error || new Error("TTS error"));
+      // iOS a veces necesita cancelar colas antes
+      try {
+        window.speechSynthesis.cancel();
+      } catch {}
+      window.speechSynthesis.speak(u);
+    });
+
+  const begin = () => {
+    setPhase("listening");
+    setStartAt(new Date().toISOString());
+  };
+
+  const playListOnce = async () => {
     if (isPlaying) return;
     setIsPlaying(true);
-    // Aquí pondrías el TTS/audio real. Para demo, simulamos 4s.
-    setTimeout(() => {
+
+    if (!hasSpeech) {
       setIsPlaying(false);
+      alert(
+        "Tu navegador no soporta síntesis de voz. Prueba Chrome/Edge/Safari actualizados o activa el permiso de voz."
+      );
+      return;
+    }
+
+    try {
+      // “Warm-up” para Safari/iOS: una utterance corta asegura desbloqueo por gesto
+      await speakOnce("A continuación escucharás una lista de palabras. Presta atención.");
+
+      // Pausa breve antes de empezar
+      await sleep(250);
+
+      for (let i = 0; i < WORD_LIST.length; i++) {
+        const word = WORD_LIST[i];
+        // lee la palabra
+        await speakOnce(word, { rate: 0.95 });
+        // micro-pausa entre palabras para separar bien
+        if (i < WORD_LIST.length - 1) await sleep(250);
+        // Si se canceló desde fuera, corta
+        if (cancelingRef.current) throw new Error("cancelled");
+      }
+
+      // Mensaje de cierre y paso de fase
+      await sleep(200);
       setPhase("recall");
-    }, 4000);
-    // (opcional) enseñar lista durante el play en UI controlada
-    // alert(`Lista: ${WORD_LIST.join(", ")}`);
+    } catch (e: any) {
+      if (e?.message !== "cancelled") {
+        console.error("TTS error:", e);
+        alert(
+          "No se pudo reproducir la lista por voz. Verifica permisos de sonido/voz en el navegador."
+        );
+      }
+    } finally {
+      setIsPlaying(false);
+    }
   };
 
   const parseRecall = (txt: string) =>
@@ -72,7 +167,7 @@ export function VerbalMemorySubtest({ onComplete, onPause }: SubtestProps) {
       alert("Falta evaluation_id en el estado global.");
       return;
     }
-    if (postedRef.current) return; // idempotencia en UI
+    if (postedRef.current) return;
 
     const recalled = parseRecall(recallText);
 
@@ -87,11 +182,12 @@ export function VerbalMemorySubtest({ onComplete, onPause }: SubtestProps) {
         recalled_words: recalled,
       };
 
-      await axios.post(`${process.env.NEXT_PUBLIC_API_BASE_URL}/v1/evaluations/verbal-memory`, body);
+      await axios.post(
+        `${process.env.NEXT_PUBLIC_API_BASE_URL}/v1/evaluations/verbal-memory`,
+        body
+      );
 
       setPhase("completed");
-
-      // Notifica arriba (por si tu shell navega al siguiente subtest)
       onComplete?.({
         startedAtISO: startAt,
         finishedAtISO: new Date().toISOString(),
@@ -99,7 +195,7 @@ export function VerbalMemorySubtest({ onComplete, onPause }: SubtestProps) {
         payload: body,
       });
     } catch (err: any) {
-      postedRef.current = false; // permite reintentar
+      postedRef.current = false;
       alert(err?.response?.data?.message || err?.message || "Error al guardar");
     } finally {
       setIsSubmitting(false);
@@ -116,7 +212,8 @@ export function VerbalMemorySubtest({ onComplete, onPause }: SubtestProps) {
         <CardContent className="space-y-4">
           <div className="bg-blue-50 p-4 rounded">
             <p className="text-blue-900 text-sm">
-              Escucharás una lista de <strong>12 palabras</strong> una sola vez. A continuación, escribe todas las que recuerdes.
+              Escucharás una lista de <strong>12 palabras</strong> una sola vez.
+              A continuación, escribe todas las que recuerdes.
             </p>
           </div>
           <div className="flex gap-2">
@@ -144,12 +241,15 @@ export function VerbalMemorySubtest({ onComplete, onPause }: SubtestProps) {
         <CardContent className="space-y-4">
           <div className="text-center">
             <Button onClick={playListOnce} disabled={isPlaying} size="lg" className="mb-2">
-              <Volume2 className="w-5 h-5 mr-2" /> {isPlaying ? "Reproduciendo…" : "Reproducir lista"}
+              <Volume2 className="w-5 h-5 mr-2" />{" "}
+              {isPlaying ? "Reproduciendo…" : "Reproducir lista"}
             </Button>
-            <p className="text-xs text-muted-foreground">(Simulado: tras ~4s pasará al recuerdo)</p>
+            {!hasSpeech && (
+              <p className="text-xs text-red-600 mt-2">
+                Tu navegador no soporta síntesis de voz.
+              </p>
+            )}
           </div>
-          {/* Si quieres mostrar la lista en pantalla para validación clínica (opcional): */}
-          {/* <div className="text-sm bg-muted p-3 rounded">{WORD_LIST.join(", ")}</div> */}
         </CardContent>
       </Card>
     );
@@ -165,7 +265,9 @@ export function VerbalMemorySubtest({ onComplete, onPause }: SubtestProps) {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <label className="block text-sm font-medium">Escribe todas las palabras recordadas (separadas por comas o espacios):</label>
+          <label className="block text-sm font-medium">
+            Escribe todas las palabras recordadas (separadas por comas o espacios):
+          </label>
           <Textarea
             className="min-h-32"
             value={recallText}
@@ -195,7 +297,9 @@ export function VerbalMemorySubtest({ onComplete, onPause }: SubtestProps) {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <p className="text-sm text-muted-foreground">Los resultados se han guardado correctamente.</p>
+        <p className="text-sm text-muted-foreground">
+          Los resultados se han guardado correctamente.
+        </p>
       </CardContent>
     </Card>
   );
