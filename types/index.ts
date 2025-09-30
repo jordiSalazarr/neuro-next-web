@@ -8,12 +8,12 @@ export interface Patient {
 }
 
 export type CurrentEvaluation = {
-  id: String,
+  id: string,
   createdAt: Date,
 currentStatus:String
 patientAge:Number,
 patientName:String
-specialistId:String
+specialistId:string
 specialistMail:String
 
 }
