@@ -1,9 +1,8 @@
 import axios from 'axios'
 import { getAuthToken, useAuthStore } from '@/src/stores/auth'
-import { get } from 'http'
 
 export const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_BASE, 
+  baseURL: process.env.NEXT_PUBLIC_API_BASE_URL, 
   withCredentials: false, 
 })
 

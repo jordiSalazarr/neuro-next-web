@@ -16,7 +16,6 @@ import { useAuthStore } from "@/src/stores/auth"
 
 import { Calendar, Filter, Loader2, RotateCcw, Search, ChevronLeft, ChevronRight, Download } from "lucide-react"
 
-// ---------- Tipos ----------
 type Evaluation = {
   pk: string
   patientName: string
