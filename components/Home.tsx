@@ -4,65 +4,46 @@ import Link from 'next/link'
 import { Button } from "@/components/ui/button"
 import { Card, CardHeader, CardContent, CardFooter } from "@/components/ui/card"
 import { useEffect } from 'react'
-import { useAuthStore } from '@/stores/auth'
+import { useAuthStore } from '@/src/stores/auth'
 import axios from 'axios'
 import { useRouter } from 'next/navigation'
 import { motion } from "framer-motion";
 
-import { Badge, ClipboardList, History, SeparatorHorizontal, ShieldCheck, Stethoscope } from 'lucide-react'
+import { Badge, ClipboardList, History, Loader2, SeparatorHorizontal, ShieldCheck, Stethoscope } from 'lucide-react'
+import { useCognitoCallback } from '@/src/features/auth/hooks/useCognitoCallback'
 
-function decodeJwt<T = any>(token: string): T | null {
-  try {
-    const [, payload] = token.split('.')
-    const json = atob(payload.replace(/-/g, '+').replace(/_/g, '/'))
-    return JSON.parse(json)
-  } catch {
-    return null
-  }
-}
+
 const HomeScreen= () => {
     const setSession = useAuthStore((s) => s.setSession)
     const router = useRouter()
+    const { loading, error } = useCognitoCallback({ redirectPath: '/home' })
 
-  useEffect(() => {
-  const url = new URL(window.location.href)
-  const code = url.searchParams.get("code")
-  console.log(code)
-  if (!code) return
-const redirectUri = `${window.location.origin}/home`;
-  const verifier = sessionStorage.getItem("pkce_verifier") || ""
-  const body = new URLSearchParams({
-    grant_type: "authorization_code",
-    client_id:process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID||"",
-    code,
-    redirect_uri:redirectUri,
-    code_verifier: verifier,
-  })
-const cognitoGetTokensUrl = process.env.NEXT_PUBLIC_COGNITO_GET_TOKEN_URL ||""
-  fetch(cognitoGetTokensUrl, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body,
-  })
-    .then(r => r.json())
-    .then(tokens => {
-      console.log(tokens)
-      const claims = decodeJwt<any>(tokens.id_token) || {}
-      const user = {
-        id: claims.sub,
-        name: claims.name || claims['cognito:username'] || '',
-        email: claims.email || '',
-        roles: claims['cognito:groups'] || [],
-      }
-       setSession(user, {
-        accessToken: tokens.access_token,
-        refreshToken: tokens.refresh_token,
-        expiresAt: Math.floor(Date.now() / 1000) + tokens.expires_in,
-      })  
-       })
-}, [])
+if (loading) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-slate-50 to-white dark:from-slate-900 dark:to-slate-950">
+        <div className="flex flex-col items-center">
+          <Loader2 className="mb-4 h-8 w-8 animate-spin text-blue-600" />
+          <p className="text-lg font-medium text-gray-700 dark:text-gray-300">Cargando...</p>
+        </div>
+      </div>
+    )
+  }
+  
+  if (error) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-slate-50 to-white dark:from-slate-900 dark:to-slate-950">
+        <div className="flex flex-col items-center">
+          <p className="mb-4 text-lg font-medium text-red-600">Error de autenticación</p>
+          <p className="mb-4 text-sm text-gray-700 dark:text-gray-300">{error}</p>
+          <Button asChild size="lg" className="bg-blue-600 hover:bg-blue-700">
+            <Link href="/">Volver a iniciar sesión</Link>
+          </Button>
+        </div>
+      </div>
+    )
+  }
 
- return (
+  return (
     <div className="relative min-h-screen bg-gradient-to-b from-slate-50 to-white dark:from-slate-900 dark:to-slate-950">
       {/* background decor */}
       <div

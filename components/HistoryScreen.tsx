@@ -12,11 +12,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { useAuthStore } from "@/stores/auth"
+import { useAuthStore } from "@/src/stores/auth"
 
 import { Calendar, Filter, Loader2, RotateCcw, Search, ChevronLeft, ChevronRight, Download } from "lucide-react"
 
-// ---------- Tipos ----------
 type Evaluation = {
   pk: string
   patientName: string

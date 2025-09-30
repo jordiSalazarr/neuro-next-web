@@ -1,4 +1,3 @@
-// /stores/evaluation.ts
 import { CurrentEvaluation } from "@/types"
 import { create } from "zustand"
 import { persist, createJSONStorage } from "zustand/middleware"

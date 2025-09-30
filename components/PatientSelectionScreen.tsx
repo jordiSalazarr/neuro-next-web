@@ -7,53 +7,33 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useApp } from "@/contexts/AppContext"
 import { useRouter } from "next/navigation"
-import type { CurrentEvaluation, Patient, TestSession } from "@/types"
-import { useAuthStore } from "@/stores/auth"
-import axios from "axios"
-import { useEvaluationStore } from "@/stores/evaluation"
+import type {  Patient, TestSession } from "@/types"
+import { useAuthStore } from "@/src/stores/auth"
+import { useEvaluationStore } from "@/src/stores/evaluation"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { motion } from "framer-motion"
 import { ClipboardList, User2, Mail, LogOut, ShieldCheck, CalendarClock } from "lucide-react"
+import { useRegisterUser } from "@/src/features/auth/hooks/useRegisterUser"
+import { useCreateEvaluation } from "@/src/features/evaluation/hooks/useCreateEvaluation"
 
 export default function PatientSelectionScreen() {
-  const BASE_API_URL = process.env.NEXT_PUBLIC_API_BASE_URL
+  const { register, loading, error } = useRegisterUser()
+  const {create, createLoading, createError} = useCreateEvaluation()
 
   const { state, dispatch } = useApp()
   const [patientName, setPatientName] = useState("")
   const [patientAge, setPatientAge] = useState(1)
   const [isFormValid, setIsFormValid] = useState(false)
   const user = useAuthStore((state) => state.user)
-  const setSession = useAuthStore((state) => state.setSession)
   const tokens = useAuthStore((state) => state.tokens)
   const router = useRouter()
   const setCurrentEvaluation = useEvaluationStore((state) => state.setCurrentEvaluation)
 
-  async function registerUserData(name: string, mail: String) {
-    if (!user) return
-    const res = await axios.post(
-      `${process.env.NEXT_PUBLIC_API_BASE_URL}/v1/auth/user/${encodeURIComponent(user?.email)}/${encodeURIComponent(
-        user?.name,
-      )}`,
-    )
-    const newUser = {
-      id: res.data.user.ID,
-      name: user.name,
-      email: user.email,
-      roles: user.roles,
-    }
-    setSession(newUser, {
-      accessToken: tokens?.accessToken || "",
-      refreshToken: tokens?.refreshToken || "",
-      expiresAt: tokens?.expiresAt,
-    })
-  }
-
   useEffect(() => {
     if (!user) return
-    registerUserData(user?.name, user?.email)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+      register(user?.name, user?.email, user?.roles || [])
   }, [])
 
   const validateForm = (name: string, age: number) => {
@@ -80,40 +60,16 @@ export default function PatientSelectionScreen() {
   }
 
   async function createNewEvaluation() {
-    if (!user || !tokens?.accessToken) {
-      return
-    }
     try {
-      const response = await axios.post(
-        `${BASE_API_URL}/v1/evaluations`,
-        {
-          patientName: patientName,
-          patientAge: patientAge,
-          specialistMail: user.email,
-          specialistId: user.id,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${tokens.accessToken}`,
-            "Content-Type": "application/json",
-          },
-        },
-      )
-      const evaluation: CurrentEvaluation = {
-        id: response.data.evaluation.pk,
-        createdAt: response.data.evaluation.createdAt,
-        currentStatus: response.data.evaluation.currentStatus,
-        patientAge: response.data.evaluation.patientAge,
-        specialistId: response.data.evaluation.specialistId,
-        specialistMail: response.data.evaluation.specialistMail,
-        patientName: response.data.evaluation.patientName,
-      }
-      setCurrentEvaluation(evaluation)
-        router.push("/test-runner")
-    } catch (error: any) {
-      console.error("❌ Error enviando evaluación:", error.response?.data || error.message)
+      const newEvaluation = await create(patientName.trim(), patientAge)
+      setCurrentEvaluation(newEvaluation || null)
+      router.push("/test-runner")
+    } catch (error) {
+      console.error("Error creating evaluation:", error)
     }
   }
+
+  if (createError) return <p>Error: {createError}</p>
 
   const handleStartSession = async () => {
     if (!isFormValid) return
@@ -146,6 +102,9 @@ export default function PatientSelectionScreen() {
   const handleLogout = () => {
     dispatch({ type: "LOGOUT" })
   }
+
+  if (loading) return <p>Registering...</p>
+  if (error) return <p>Error: {error}</p>
 
   return (
     <div className="relative min-h-screen bg-gradient-to-b from-slate-50 to-white dark:from-slate-900 dark:to-slate-950">

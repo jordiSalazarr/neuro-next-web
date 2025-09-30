@@ -2,7 +2,8 @@
 
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
-import type { User, Tokens } from '@/types'
+import { User,Tokens } from '../features/auth/api/dto'
+
 
 type AuthState = {
   user: User | null
@@ -14,7 +15,6 @@ type AuthState = {
 
 export const AUTH_STORE_NAME = 'auth-store' as const
 
-// Persistimos SOLO el user (los tokens quedan en memoria)
 export const useAuthStore = create<AuthState>()(
   persist(
     (set, get) => ({
@@ -27,8 +27,8 @@ export const useAuthStore = create<AuthState>()(
     {
       name: AUTH_STORE_NAME,
       storage: createJSONStorage(() => sessionStorage),
-      // importante: solo persistimos el user
-      // partialize: (state) => ({ user: state.user }),
     }
   )
 )
+
+export const getAuthToken = () => useAuthStore.getState().tokens?.accessToken || null

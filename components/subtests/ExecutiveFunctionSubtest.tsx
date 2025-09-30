@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import axios from "axios"
 import type { SubtestProps } from "@/types"
-import { useEvaluationStore } from "@/stores/evaluation"
+import { useEvaluationStore } from "@/src/stores/evaluation"
 
 interface Node {
   id: string

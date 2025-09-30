@@ -1,6 +1,6 @@
 'use client'
 
-import { useEvaluationStore } from '@/stores/evaluation'
+import { useEvaluationStore } from '@/src/stores/evaluation'
 import axios from 'axios'
 import { useRouter } from "next/navigation" // Import useRouter from next/navigation if using Next.js
 import {  useState } from 'react'

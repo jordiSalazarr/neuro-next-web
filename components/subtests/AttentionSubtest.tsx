@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import type { SubtestProps } from "@/types"
 import axios from "axios"
-import { useEvaluationStore } from "@/stores/evaluation"
+import { useEvaluationStore } from "@/src/stores/evaluation"
 
 const ALL_LETTERS = [
   "A",
@@ -37,10 +37,10 @@ const ALL_LETTERS = [
   "Y",
   "Z",
 ]
-const MATRIX_ROWS = 52 // 52 filas de matriz
-const MATRIX_COLS = 22 // 22 columnas de matriz
-const TOTAL_TARGETS = 10 // 50 letras objetivo diferentes
-const SUBTEST_DURATION = 300 // 5 minutos en segundos
+const MATRIX_ROWS = 52 
+const MATRIX_COLS = 22 
+const TOTAL_TARGETS = 10
+const SUBTEST_DURATION = 300
 
 interface LetterCell {
   letter: string

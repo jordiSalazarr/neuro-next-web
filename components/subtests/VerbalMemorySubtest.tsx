@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Volume2, CheckCircle2 } from "lucide-react";
 import axios from "axios";
-import { useEvaluationStore } from "@/stores/evaluation";
+import { useEvaluationStore } from "@/src/stores/evaluation";
 
 const WORD_LIST = [
   "pera",

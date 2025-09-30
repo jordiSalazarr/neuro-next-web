@@ -11,7 +11,7 @@ import { Progress } from "@/components/ui/progress"
 import { Clock, CheckCircle, XCircle } from "lucide-react"
 import type { SubtestProps } from "@/types"
 import axios from "axios"
-import { useEvaluationStore } from "@/stores/evaluation"
+import { useEvaluationStore } from "@/src/stores/evaluation"
 import { useRouter } from "next/navigation"
 
 const CATEGORIES = [
