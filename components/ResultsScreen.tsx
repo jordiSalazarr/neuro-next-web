@@ -29,7 +29,7 @@ import {
   MoreVertical,
 } from "lucide-react";
 
-import { useEvaluationStore } from "@/stores/evaluation";
+import { useEvaluationStore } from "@/src/stores/evaluation";
 
 // -------- Types ---------
 interface Evaluation {

@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import type { SubtestProps } from "@/types";
-import { useEvaluationStore } from "@/stores/evaluation";
+import { useEvaluationStore } from "@/src/stores/evaluation";
 
 type DrawingPoint = { x: number; y: number };
 type DrawingStroke = { points: DrawingPoint[]; timestamp: number; order: number };

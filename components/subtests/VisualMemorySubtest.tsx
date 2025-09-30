@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import type { SubtestProps, SubtestResult } from "@/types"
-import { useEvaluationStore } from "@/stores/evaluation"
+import { useEvaluationStore } from "@/src/stores/evaluation"
 
 type ShapeType = "circle" | "square" | "triangle"
 

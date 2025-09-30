@@ -8,17 +8,19 @@ import { Label } from "@/components/ui/label"
 import { useApp } from "@/contexts/AppContext"
 import { useRouter } from "next/navigation"
 import type { CurrentEvaluation, Patient, TestSession } from "@/types"
-import { useAuthStore } from "@/stores/auth"
+import { useAuthStore } from "@/src/stores/auth"
 import axios from "axios"
-import { useEvaluationStore } from "@/stores/evaluation"
+import { useEvaluationStore } from "@/src/stores/evaluation"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { motion } from "framer-motion"
 import { ClipboardList, User2, Mail, LogOut, ShieldCheck, CalendarClock } from "lucide-react"
+import { useRegisterUser } from "@/src/features/auth/hooks/useRegisterUser"
 
 export default function PatientSelectionScreen() {
   const BASE_API_URL = process.env.NEXT_PUBLIC_API_BASE_URL
+  const { register, loading, error } = useRegisterUser()
 
   const { state, dispatch } = useApp()
   const [patientName, setPatientName] = useState("")
@@ -52,8 +54,7 @@ export default function PatientSelectionScreen() {
 
   useEffect(() => {
     if (!user) return
-    registerUserData(user?.name, user?.email)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+      register(user?.name, user?.email, user?.roles || [])
   }, [])
 
   const validateForm = (name: string, age: number) => {
@@ -146,6 +147,9 @@ export default function PatientSelectionScreen() {
   const handleLogout = () => {
     dispatch({ type: "LOGOUT" })
   }
+
+  if (loading) return <p>Registering...</p>
+  if (error) return <p>Error: {error}</p>
 
   return (
     <div className="relative min-h-screen bg-gradient-to-b from-slate-50 to-white dark:from-slate-900 dark:to-slate-950">

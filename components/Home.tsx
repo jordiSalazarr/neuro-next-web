@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { Button } from "@/components/ui/button"
 import { Card, CardHeader, CardContent, CardFooter } from "@/components/ui/card"
 import { useEffect } from 'react'
-import { useAuthStore } from '@/stores/auth'
+import { useAuthStore } from '@/src/stores/auth'
 import axios from 'axios'
 import { useRouter } from 'next/navigation'
 import { motion } from "framer-motion";
