@@ -1,4 +1,3 @@
-// src/features/auth/hooks/useCognitoCallback.ts
 'use client'
 
 import { useEffect, useRef, useState } from 'react'

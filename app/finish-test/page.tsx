@@ -1,13 +1,10 @@
 'use client'
 
+import { useCanFinishEvaluation } from '@/src/features/evaluation/hooks/useCanFinishEvaluation'
 import { useEvaluationStore } from '@/src/stores/evaluation'
 import axios from 'axios'
 import { useRouter } from "next/navigation" // Import useRouter from next/navigation if using Next.js
-import {  useState } from 'react'
-
-// ⬇️ Cambia este import por tu contexto real
-// Debe exponer algo como { currentEvaluation, clearCurrentEvaluation }
-
+import {  useEffect, useState } from 'react'
 
 function formatDate(d: string | Date | undefined): string {
   if (!d) return '-'
@@ -28,10 +25,20 @@ export default function FinishTestPage() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [done, setDone] = useState(false)
+  const [userCanFinish, setUserCanFinish] = useState(false)
   const router = useRouter()
-if (!currentEvaluation) return
-  const canSubmit = currentEvaluation?.id != null && currentEvaluation.id != ""
+   const checkUserCanFinish = async ()=> {
+     const userCanFinish = await canFinish(currentEvaluation?.id || "", currentEvaluation?.specialistId || "")
+     setUserCanFinish(userCanFinish || false)
+  }
+  const {canFinish,canFinishLoading,canFinishError} = useCanFinishEvaluation()
+    useEffect(() => {
+    checkUserCanFinish()
+  }, [])
 
+   if (!currentEvaluation) return
+  const canSubmit = currentEvaluation?.id != null && currentEvaluation.id != ""
+  
   const handleFinish = async () => {
     if (!canSubmit) return
     setSubmitting(true)
@@ -48,7 +55,9 @@ if (!currentEvaluation) return
       setSubmitting(false)
     }
   }
-
+  if (canFinishError) {
+    return <div className="p-6 text-red-700">Error: {String(canFinishError)}</div>
+  }
   return (
     <main className="mx-auto max-w-2xl p-6">
       <h1 className="text-2xl font-semibold mb-4">Finalizar test</h1>
@@ -92,14 +101,25 @@ if (!currentEvaluation) return
           )}
 
           <div className="flex items-center gap-3">
-            <button
+           {userCanFinish ?  <button
               type="button"
               disabled={!canSubmit}
               onClick={handleFinish}
               className="rounded-2xl px-5 py-2.5 text-white bg-black disabled:opacity-50"
             >
               {submitting ? 'Evaluando...' : done ? 'Enviado' : 'Finalizar test'}
+            </button> :
+             <><span className="text-sm text-red-700">No se pueden finalizar las evaluaciones incompletas.Finalize todos los tests primero.</span>
+             <button
+              type="button"
+              onClick={() => router.push("/test-runner")}
+              className="rounded-lg px-3 py-2.5 text-white bg-black disabled:opacity-50"
+            >
+              Volver a la evaluación
             </button>
+             </>
+
+             } 
             {done && (
               <span className="text-sm text-green-700">
                 Test finalizado correctamente.

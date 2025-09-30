@@ -3,19 +3,16 @@
 import Link from 'next/link'
 import { Button } from "@/components/ui/button"
 import { Card, CardHeader, CardContent, CardFooter } from "@/components/ui/card"
-import { useEffect } from 'react'
 import { useAuthStore } from '@/src/stores/auth'
-import axios from 'axios'
 import { useRouter } from 'next/navigation'
 import { motion } from "framer-motion";
 
 import { Badge, ClipboardList, History, Loader2, SeparatorHorizontal, ShieldCheck, Stethoscope } from 'lucide-react'
 import { useCognitoCallback } from '@/src/features/auth/hooks/useCognitoCallback'
+import { Suspense } from 'react'
 
 
 const HomeScreen= () => {
-    const setSession = useAuthStore((s) => s.setSession)
-    const router = useRouter()
     const { loading, error } = useCognitoCallback({ redirectPath: '/home' })
 
 if (loading) {
@@ -44,6 +41,7 @@ if (loading) {
   }
 
   return (
+
     <div className="relative min-h-screen bg-gradient-to-b from-slate-50 to-white dark:from-slate-900 dark:to-slate-950">
       {/* background decor */}
       <div
@@ -162,6 +160,7 @@ if (loading) {
       </div>
     </div>
   );
+  
 }
 
 export default HomeScreen
