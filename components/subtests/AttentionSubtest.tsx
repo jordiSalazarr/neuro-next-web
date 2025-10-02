@@ -37,7 +37,7 @@ const ALL_LETTERS = [
   "Y",
   "Z",
 ]
-const MATRIX_ROWS = 52 
+const MATRIX_ROWS = 14
 const MATRIX_COLS = 22 
 const TOTAL_TARGETS = 10
 const SUBTEST_DURATION = 300

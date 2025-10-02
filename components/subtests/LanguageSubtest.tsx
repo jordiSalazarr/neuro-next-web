@@ -32,7 +32,7 @@ const CATEGORIES = [
   },
 ]
 
-const TEST_DURATION = 5 // 60 segundos
+const TEST_DURATION = 60 // 60 segundos
 
 export function LanguageSubtest({ onComplete, onPause }: SubtestProps) {
   const [phase, setPhase] = useState<"instructions" | "active" | "completed">("instructions")
