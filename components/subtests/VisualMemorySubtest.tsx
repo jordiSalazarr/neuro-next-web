@@ -1,4 +1,4 @@
- "use client"
+"use client"
 
 import { useState, useEffect, useRef, useCallback } from "react"
 import axios from "axios"
@@ -11,6 +11,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import type { SubtestProps, SubtestResult } from "@/types"
 import { useEvaluationStore } from "@/src/stores/evaluation"
+
+// ================== Types ==================
 
 type ShapeType = "circle" | "square" | "triangle"
 
@@ -39,6 +41,8 @@ interface VisualMemorySubtestProps extends SubtestProps {
   endpointPath?: string
 }
 
+// ================== Consts ==================
+
 const SHAPES: Shape[] = [
   { id: 1, type: "circle", x: 100, y: 100, size: 60, color: "#3B82F6" },
   { id: 2, type: "square", x: 250, y: 150, size: 50, color: "#EF4444" },
@@ -46,6 +50,10 @@ const SHAPES: Shape[] = [
 ]
 
 const DISPLAY_TIME = 10 // segundos para memorizar
+const CANVAS_CSS_WIDTH = 400
+const CANVAS_CSS_HEIGHT = 350
+
+// ================== Component ==================
 
 export function VisualMemorySubtest({
   onComplete,
@@ -60,23 +68,50 @@ export function VisualMemorySubtest({
   const [strokes, setStrokes] = useState<DrawingStroke[]>([])
   const [currentStroke, setCurrentStroke] = useState<DrawingPoint[]>([])
   const [strokeOrder, setStrokeOrder] = useState(0)
-const currentEvaluationId = useEvaluationStore(state=>state.currentEvaluation?.id)
+  const [activePointerId, setActivePointerId] = useState<number | null>(null)
+  const [usePressure, setUsePressure] = useState<boolean>(false) // opcional: escalado por presión
+  const currentEvaluationId = useEvaluationStore((state) => state.currentEvaluation?.id)
+
   const [score, setScore] = useState<string>("") // "0" | "1" | "2"
   const [note, setNote] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
   // Canvas refs
-  const studyCanvasRef = useRef<HTMLCanvasElement>(null)       // para fase de estudio
-  const drawCanvasRef = useRef<HTMLCanvasElement>(null)        // dibujo del paciente (recall/evaluation)
-  const originalCanvasRef = useRef<HTMLCanvasElement>(null)    // figura original en evaluación
+  const studyCanvasRef = useRef<HTMLCanvasElement>(null) // para fase de estudio
+  const drawCanvasRef = useRef<HTMLCanvasElement>(null) // dibujo del paciente (recall/evaluation)
+  const originalCanvasRef = useRef<HTMLCanvasElement>(null) // figura original en evaluación
 
-  // Helper para pintar las figuras originales en cualquier canvas
+  // ================== Canvas DPR helpers ==================
+
+  const setupCanvas = useCallback((canvas: HTMLCanvasElement | null) => {
+    if (!canvas) return
+    const dpr = typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1
+    // set the CSS pixel size
+    canvas.style.width = `${CANVAS_CSS_WIDTH}px`
+    canvas.style.height = `${CANVAS_CSS_HEIGHT}px`
+    // set the backing store size
+    canvas.width = Math.floor(CANVAS_CSS_WIDTH * dpr)
+    canvas.height = Math.floor(CANVAS_CSS_HEIGHT * dpr)
+    const ctx = canvas.getContext("2d")
+    if (!ctx) return
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0) // scale so we can draw in CSS pixels
+    ctx.lineCap = "round"
+    ctx.lineJoin = "round"
+  }, [])
+
+  const getRelativePoint = useCallback((canvas: HTMLCanvasElement, e: PointerEvent | React.PointerEvent) => {
+    const rect = canvas.getBoundingClientRect()
+    return { x: e.clientX - rect.left, y: e.clientY - rect.top }
+  }, [])
+
+  // ================== Draw originals ==================
+
   const drawOriginalShapes = useCallback((canvas: HTMLCanvasElement | null) => {
     if (!canvas) return
     const ctx = canvas.getContext("2d")
     if (!ctx) return
-    ctx.clearRect(0, 0, canvas.width, canvas.height)
+    ctx.clearRect(0, 0, CANVAS_CSS_WIDTH, CANVAS_CSS_HEIGHT)
     SHAPES.forEach((shape) => {
       ctx.fillStyle = shape.color
       ctx.strokeStyle = "#000"
@@ -105,7 +140,8 @@ const currentEvaluationId = useEvaluationStore(state=>state.currentEvaluation?.i
     })
   }, [])
 
-  // Timer fase de estudio
+  // ================== Timers/Phases ==================
+
   useEffect(() => {
     if (phase !== "study") return
     const interval = setInterval(() => {
@@ -120,35 +156,58 @@ const currentEvaluationId = useEvaluationStore(state=>state.currentEvaluation?.i
     return () => clearInterval(interval)
   }, [phase])
 
-  // Pintar figuras durante la fase de estudio
+  // draw originals during study
   useEffect(() => {
     if (phase === "study") {
+      setupCanvas(studyCanvasRef.current)
       drawOriginalShapes(studyCanvasRef.current)
     }
-  }, [phase, studyTimeRemaining, drawOriginalShapes])
+  }, [phase, studyTimeRemaining, drawOriginalShapes, setupCanvas])
 
-  // Pintar las figuras originales en evaluación (lado izquierdo)
+  // draw originals during evaluation
   useEffect(() => {
     if (phase === "evaluation") {
+      setupCanvas(originalCanvasRef.current)
       drawOriginalShapes(originalCanvasRef.current)
     }
-  }, [phase, drawOriginalShapes])
+  }, [phase, drawOriginalShapes, setupCanvas])
 
-  // Repintar el dibujo del paciente en recall/evaluation
+  // keep drawing canvas prepared whenever recall/evaluation
+  useEffect(() => {
+    if (phase === "recall" || phase === "evaluation") {
+      setupCanvas(drawCanvasRef.current)
+      repaintPatientDrawing()
+    }
+  }, [phase, setupCanvas])
+
+  // handle window DPR/resize changes for active canvases
+  useEffect(() => {
+    const handle = () => {
+      ;[studyCanvasRef.current, drawCanvasRef.current, originalCanvasRef.current].forEach((c) => {
+        if (c) setupCanvas(c)
+      })
+      if (phase === "study") drawOriginalShapes(studyCanvasRef.current)
+      if (phase === "evaluation") drawOriginalShapes(originalCanvasRef.current)
+      if (phase === "recall" || phase === "evaluation") repaintPatientDrawing()
+    }
+    window.addEventListener("resize", handle)
+    return () => window.removeEventListener("resize", handle)
+  }, [phase, setupCanvas, drawOriginalShapes])
+
+  // ================== Patient drawing repaint ==================
+
   const repaintPatientDrawing = useCallback(() => {
     const canvas = drawCanvasRef.current
     if (!canvas) return
     const ctx = canvas.getContext("2d")
     if (!ctx) return
-    ctx.clearRect(0, 0, canvas.width, canvas.height)
+    ctx.clearRect(0, 0, CANVAS_CSS_WIDTH, CANVAS_CSS_HEIGHT)
 
-    // Trazos guardados
+    // saved strokes
     strokes.forEach((stroke) => {
       if (stroke.points.length > 1) {
         ctx.strokeStyle = "#000"
         ctx.lineWidth = 2
-        ctx.lineCap = "round"
-        ctx.lineJoin = "round"
         ctx.beginPath()
         ctx.moveTo(stroke.points[0].x, stroke.points[0].y)
         stroke.points.forEach((p) => ctx.lineTo(p.x, p.y))
@@ -156,12 +215,10 @@ const currentEvaluationId = useEvaluationStore(state=>state.currentEvaluation?.i
       }
     })
 
-    // Trazo actual (mientras dibuja)
+    // current stroke
     if (currentStroke.length > 1) {
       ctx.strokeStyle = "#3B82F6"
       ctx.lineWidth = 2
-      ctx.lineCap = "round"
-      ctx.lineJoin = "round"
       ctx.beginPath()
       ctx.moveTo(currentStroke[0].x, currentStroke[0].y)
       currentStroke.forEach((p) => ctx.lineTo(p.x, p.y))
@@ -170,42 +227,71 @@ const currentEvaluationId = useEvaluationStore(state=>state.currentEvaluation?.i
   }, [strokes, currentStroke])
 
   useEffect(() => {
-    if (phase === "recall" || phase === "evaluation") {
-      repaintPatientDrawing()
-    }
+    if (phase === "recall" || phase === "evaluation") repaintPatientDrawing()
   }, [phase, strokes, currentStroke, repaintPatientDrawing])
 
-  // Handlers de dibujo
-  const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+  // ================== Pointer-based drawing (mouse, touch, stylus) ==================
+
+  const beginStroke = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
     if (phase !== "recall") return
-    const rect = drawCanvasRef.current!.getBoundingClientRect()
+    const canvas = drawCanvasRef.current
+    if (!canvas) return
+
+    // lock to a single pointer (prevents multi-touch from interfering)
+    if (activePointerId !== null && activePointerId !== e.pointerId) return
+
+    canvas.setPointerCapture?.(e.pointerId)
+    setActivePointerId(e.pointerId)
     setIsDrawing(true)
-    setCurrentStroke([{ x: e.clientX - rect.left, y: e.clientY - rect.top }])
-  }
-  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+
+    const p = getRelativePoint(canvas, e)
+    setCurrentStroke([{ x: p.x, y: p.y }])
+  }, [phase, activePointerId, getRelativePoint])
+
+  const moveStroke = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
     if (!isDrawing || phase !== "recall") return
-    const rect = drawCanvasRef.current!.getBoundingClientRect()
-    setCurrentStroke((prev) => [...prev, { x: e.clientX - rect.left, y: e.clientY - rect.top }])
-  }
-  const handleMouseUp = () => {
+    const canvas = drawCanvasRef.current
+    if (!canvas) return
+
+    if (activePointerId !== null && activePointerId !== e.pointerId) return
+
+    const p = getRelativePoint(canvas, e)
+
+    // Optional: adjust line width by pressure when enabled (visual only while drawing next repaint)
+    // We keep stored points as x/y only; pressure affects rendering style if you decide to extend it later.
+    const pressure = usePressure ? e.pressure || 0.5 : 0
+    if (pressure) {
+      // quick preview trick: vary the last segment width by pressure during the live stroke
+      // (kept simple: we don't store widths; you can extend DrawingPoint with width if needed)
+    }
+
+    setCurrentStroke((prev) => [...prev, { x: p.x, y: p.y }])
+  }, [isDrawing, phase, activePointerId, getRelativePoint, usePressure])
+
+  const endStroke = useCallback((e?: React.PointerEvent<HTMLCanvasElement>) => {
     if (!isDrawing) return
+    if (e && activePointerId !== null && e.pointerId !== activePointerId) return
+
     setIsDrawing(false)
+    setActivePointerId(null)
     if (currentStroke.length > 1) {
       setStrokes((prev) => [...prev, { points: currentStroke, timestamp: Date.now(), order: strokeOrder }])
       setStrokeOrder((prev) => prev + 1)
     }
     setCurrentStroke([])
-  }
+  }, [isDrawing, currentStroke, strokeOrder, activePointerId])
+
+  // ================== Utilities ==================
 
   const clearCanvas = () => {
     setStrokes([])
     setCurrentStroke([])
     setStrokeOrder(0)
-    // repintar vacío
     requestAnimationFrame(() => repaintPatientDrawing())
   }
 
-  // Flujo
+  // ================== Flow ==================
+
   const startSubtest = () => {
     setErrorMsg(null)
     setScore("")
@@ -221,7 +307,8 @@ const currentEvaluationId = useEvaluationStore(state=>state.currentEvaluation?.i
     setPhase("evaluation")
   }
 
-  // Envío con Axios
+  // ================== Submit ==================
+
   const submitEvaluation = async () => {
     setErrorMsg(null)
     if (!currentEvaluationId) {
@@ -241,7 +328,7 @@ const currentEvaluationId = useEvaluationStore(state=>state.currentEvaluation?.i
 
     const payload = {
       evaluation_id: currentEvaluationId,
-      score_id: Number(score), // el backend espera `score_id`
+      score_id: Number(score),
       note: note?.trim() ?? "",
     }
 
@@ -249,36 +336,34 @@ const currentEvaluationId = useEvaluationStore(state=>state.currentEvaluation?.i
       setIsSubmitting(true)
       await axios.post(`${baseURL}${endpointPath}`, payload, {
         headers: { "Content-Type": "application/json" },
-        // Si usas auth: headers: { Authorization: `Bearer ${token}` }
       })
       setPhase("completed")
+
       const apiPayload = {
-  evaluation_id: currentEvaluationId,
-  score_id: Number(score),
-  note: note?.trim() ?? "",
-}
+        evaluation_id: currentEvaluationId,
+        score_id: Number(score),
+        note: note?.trim() ?? "",
+      }
 
-const subtestResult: Omit<SubtestResult, "subtestId" | "name"> = {
-  startTime: new Date(),
-  score: apiPayload.score_id,
-  errors: 0,
-  timeSpent: 0,
-  rawData: apiPayload,
-}
+      const subtestResult: Omit<SubtestResult, "subtestId" | "name"> = {
+        startTime: new Date(),
+        score: apiPayload.score_id,
+        errors: 0,
+        timeSpent: 0,
+        rawData: apiPayload,
+      }
 
-onComplete?.(subtestResult)
+      onComplete?.(subtestResult)
     } catch (err: any) {
-      const msg =
-        err?.response?.data?.message ||
-        err?.message ||
-        "No se pudo enviar la evaluación. Inténtalo de nuevo."
+      const msg = err?.response?.data?.message || err?.message || "No se pudo enviar la evaluación. Inténtalo de nuevo."
       setErrorMsg(msg)
     } finally {
       setIsSubmitting(false)
     }
   }
 
-  // Render por fase
+  // ================== Render ==================
+
   if (phase === "instructions") {
     return (
       <Card>
@@ -316,7 +401,12 @@ onComplete?.(subtestResult)
             <Progress value={((DISPLAY_TIME - studyTimeRemaining) / DISPLAY_TIME) * 100} className="h-2" />
           </div>
           <div className="flex justify-center">
-            <canvas ref={studyCanvasRef} width={400} height={350} className="border-2 border-gray-300 rounded-lg bg-white" />
+            <canvas
+              ref={studyCanvasRef}
+              className="border-2 border-gray-300 rounded-lg bg-white select-none"
+              style={{ touchAction: "none", width: CANVAS_CSS_WIDTH, height: CANVAS_CSS_HEIGHT }}
+              onContextMenu={(e) => e.preventDefault()}
+            />
           </div>
         </CardContent>
       </Card>
@@ -329,8 +419,11 @@ onComplete?.(subtestResult)
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
             <span>Dibuja las figuras</span>
-            <div className="flex gap-2">
+            <div className="flex gap-2 items-center">
               <Badge variant="outline">Trazos: {strokes.length}</Badge>
+              <Button variant="outline" size="sm" onClick={() => setUsePressure((v) => !v)}>
+                {usePressure ? "Presión: ON" : "Presión: OFF"}
+              </Button>
               <Button variant="outline" size="sm" onClick={clearCanvas}>Limpiar</Button>
             </div>
           </CardTitle>
@@ -339,18 +432,17 @@ onComplete?.(subtestResult)
           <div className="flex justify-center mb-4">
             <canvas
               ref={drawCanvasRef}
-              width={400}
-              height={350}
-              className="border-2 border-gray-300 rounded-lg bg-white cursor-crosshair"
-              onMouseDown={handleMouseDown}
-              onMouseMove={handleMouseMove}
-              onMouseUp={handleMouseUp}
-              onMouseLeave={handleMouseUp}
+              className="border-2 border-gray-300 rounded-lg bg-white cursor-crosshair select-none"
+              style={{ touchAction: "none", width: CANVAS_CSS_WIDTH, height: CANVAS_CSS_HEIGHT }}
+              onPointerDown={beginStroke}
+              onPointerMove={moveStroke}
+              onPointerUp={endStroke}
+              onPointerCancel={endStroke}
+              onPointerLeave={endStroke}
+              onContextMenu={(e) => e.preventDefault()}
             />
           </div>
-          <p className="text-center text-gray-600 mb-4">
-            Dibuja las figuras en las mismas posiciones aproximadas.
-          </p>
+          <p className="text-center text-gray-600 mb-4">Dibuja las figuras en las mismas posiciones aproximadas.</p>
           <div className="flex justify-between">
             <Button variant="outline" onClick={onPause}>Pausar</Button>
             <Button onClick={goToEvaluation}>Ir a evaluación</Button>
@@ -368,19 +460,27 @@ onComplete?.(subtestResult)
         </CardHeader>
         <CardContent className="space-y-4">
           {errorMsg && (
-            <div className="rounded-md border border-red-300 bg-red-50 text-red-800 p-3 text-sm">
-              {errorMsg}
-            </div>
+            <div className="rounded-md border border-red-300 bg-red-50 text-red-800 p-3 text-sm">{errorMsg}</div>
           )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <h4 className="font-semibold mb-2">Figura original</h4>
-              <canvas ref={originalCanvasRef} width={400} height={350} className="border rounded-lg bg-white" />
+              <canvas
+                ref={originalCanvasRef}
+                className="border rounded-lg bg-white select-none"
+                style={{ touchAction: "none", width: CANVAS_CSS_WIDTH, height: CANVAS_CSS_HEIGHT }}
+                onContextMenu={(e) => e.preventDefault()}
+              />
             </div>
             <div>
               <h4 className="font-semibold mb-2">Dibujo del paciente</h4>
-              <canvas ref={drawCanvasRef} width={400} height={350} className="border rounded-lg bg-white" />
+              <canvas
+                ref={drawCanvasRef}
+                className="border rounded-lg bg-white select-none"
+                style={{ touchAction: "none", width: CANVAS_CSS_WIDTH, height: CANVAS_CSS_HEIGHT }}
+                onContextMenu={(e) => e.preventDefault()}
+              />
             </div>
           </div>
 
