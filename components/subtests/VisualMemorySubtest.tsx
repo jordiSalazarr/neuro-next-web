@@ -401,16 +401,24 @@ export function VisualMemorySubtest({
             <Progress value={((DISPLAY_TIME - studyTimeRemaining) / DISPLAY_TIME) * 100} className="h-2" />
           </div>
           <div className="flex justify-center">
-            <canvas
-  ref={drawCanvasRef}
-  className="select-none"  // opcional
-  style={{ touchAction: "none", width: 400, height: 350 }}
-  onPointerDown={beginStroke}
-  onPointerMove={moveStroke}
-  onPointerUp={endStroke}
-  onPointerCancel={endStroke}
-  onPointerLeave={endStroke}
-/>
+             <CardContent>
+  <div className="mb-3">
+    <Progress
+      value={((DISPLAY_TIME - studyTimeRemaining) / DISPLAY_TIME) * 100}
+      className="h-2"
+    />
+  </div>
+
+  <div className="flex justify-center">
+    <canvas
+      ref={studyCanvasRef}
+      className="border-2 border-gray-300 rounded-lg bg-white select-none"
+      style={{ touchAction: "none", width: CANVAS_CSS_WIDTH, height: CANVAS_CSS_HEIGHT }}
+      onContextMenu={(e) => e.preventDefault()}
+    />
+  </div>
+</CardContent>
+
 
           </div>
         </CardContent>
