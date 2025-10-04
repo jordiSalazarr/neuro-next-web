@@ -402,12 +402,6 @@ export function VisualMemorySubtest({
           </div>
           <div className="flex justify-center">
              <CardContent>
-  <div className="mb-3">
-    <Progress
-      value={((DISPLAY_TIME - studyTimeRemaining) / DISPLAY_TIME) * 100}
-      className="h-2"
-    />
-  </div>
 
   <div className="flex justify-center">
     <canvas
