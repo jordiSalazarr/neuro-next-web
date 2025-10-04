@@ -229,8 +229,9 @@ export function ExecutiveFunctionSubtest(
           <div className="bg-orange-50 p-6 rounded-lg">
             <h4 className="font-semibold text-orange-900 mb-3">¿Qué debe hacer?</h4>
             <ul className="space-y-2 text-orange-800">
-              <li>• <strong>TMT-A:</strong> Conecte los números en orden (1→2→3...)</li>
+              <li>• <strong>TMT-A:</strong> Conecte los números haciendo click en orden (1→2→3...)</li>
               <li>• <strong>TMT-A+B:</strong> Alterne número y letra (1→A→2→B→...)</li>
+              <li>• Las linias entre puntos se generan de forma automática</li>
               <li>• Trabaje lo más rápido posible sin cometer errores</li>
             </ul>
           </div>
