@@ -402,11 +402,16 @@ export function VisualMemorySubtest({
           </div>
           <div className="flex justify-center">
             <canvas
-              ref={studyCanvasRef}
-              className="border-2 border-gray-300 rounded-lg bg-white select-none"
-              style={{ touchAction: "none", width: CANVAS_CSS_WIDTH, height: CANVAS_CSS_HEIGHT }}
-              onContextMenu={(e) => e.preventDefault()}
-            />
+  ref={drawCanvasRef}
+  className="select-none"  // opcional
+  style={{ touchAction: "none", width: 400, height: 350 }}
+  onPointerDown={beginStroke}
+  onPointerMove={moveStroke}
+  onPointerUp={endStroke}
+  onPointerCancel={endStroke}
+  onPointerLeave={endStroke}
+/>
+
           </div>
         </CardContent>
       </Card>
