@@ -5,6 +5,7 @@ import { VisualMemorySubtest } from "@/components/subtests/VisualMemorySubtest"
 import { ExecutiveFunctionSubtest } from "@/components/subtests/ExecutiveFunctionSubtest"
 import { VisuospatialSubtest } from "@/components/subtests/VisuospatialSubtest"
 import { LanguageSubtest } from "@/components/subtests/LanguageSubtest"
+import VerbalMemoryDelayedSubtest from "@/components/subtests/VerbalMemoryDelayed"
 
 export const SUBTEST_CONFIGS: SubtestConfig[] = [
   {
@@ -42,11 +43,19 @@ export const SUBTEST_CONFIGS: SubtestConfig[] = [
     duration: 300, // 5 minutos
     component: VisuospatialSubtest,
   },
+  
+   {
+    id: "verbal_memory_delayed",
+    name: "Memoria verbal — Recuerdo diferido",
+    description: "Tras el intervalo, escribe todas las palabras que recuerdes de la lista presentada antes.",
+    component: VerbalMemoryDelayedSubtest,
+    duration: 200
+  },
   {
     id: "language-fluency",
     name: "Lenguaje - Fluencia Verbal Semántica",
     description: "Diga todas las palabras que pueda de la categoría indicada en 60 segundos.",
     duration: 60, // 1 minuto
     component: LanguageSubtest,
-  },
+  }
 ]

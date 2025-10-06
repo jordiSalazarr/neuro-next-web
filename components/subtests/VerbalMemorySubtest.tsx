@@ -24,6 +24,7 @@ const WORD_LIST = [
   "caballo",
 ];
 
+
 interface SubtestProps {
   onComplete?: (result: any) => void;
   onPause?: () => void;
@@ -180,6 +181,7 @@ export function VerbalMemorySubtest({ onComplete, onPause }: SubtestProps) {
         start_at: startAt ?? new Date().toISOString(),
         given_words: WORD_LIST,
         recalled_words: recalled,
+        subtype:"immediate",
       };
 
       await axios.post(
