@@ -12,8 +12,11 @@ import { useEvaluationStore } from "@/src/stores/evaluation"
 import { useRouter } from "next/navigation"
 
 const TEST_DURATION = 60 // segundos
-
-export function LanguageSubtest({ onComplete, onPause }: { onComplete?: () => void; onPause?: () => void }) {
+interface SubtestProps {
+  onComplete?: (result: any) => void;
+  onPause?: () => void;
+}
+export function LanguageSubtest({ onComplete, onPause }:SubtestProps) {
   const [phase, setPhase] = useState<"instructions" | "active" | "completed">("instructions")
   const [timeRemaining, setTimeRemaining] = useState(TEST_DURATION)
   const [isRecording, setIsRecording] = useState(false)
@@ -162,8 +165,6 @@ console.log("Blob type:", blob.type)
           timeout: 60_000,
         }
       )
-
-      onComplete?.()
       router.push("/finish-test")
     } catch (e) {
       console.error(e)
