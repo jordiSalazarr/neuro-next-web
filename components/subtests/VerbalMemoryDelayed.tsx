@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { CheckCircle2, PauseCircle } from "lucide-react";
 import axios from "axios";
 import { useEvaluationStore } from "@/src/stores/evaluation";
+import { WORD_LIST } from "./VerbalMemorySubtest";
 
 interface SubtestProps {
   onComplete?: (result: any) => void;
@@ -28,20 +29,6 @@ export default function VerbalMemoryDelayedSubtest({ onComplete, onPause }: Subt
     setPhase("recall");
     setStartAt(new Date().toISOString());
   };
-const WORD_LIST = [
-  "pera",
-  "manzana",
-  "plátano",
-  "uva",
-  "camisa",
-  "pantalón",
-  "chaqueta",
-  "falda",
-  "perro",
-  "gato",
-  "vaca",
-  "caballo",
-];
   // Importante: NO deduplicamos para preservar perseveraciones (repeticiones)
   const parseRecallRaw = (txt: string) =>
     txt

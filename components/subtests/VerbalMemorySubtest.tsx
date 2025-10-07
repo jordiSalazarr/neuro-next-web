@@ -9,19 +9,19 @@ import { Volume2, CheckCircle2 } from "lucide-react";
 import axios from "axios";
 import { useEvaluationStore } from "@/src/stores/evaluation";
 
-const WORD_LIST = [
-  "pera",
-  "manzana",
-  "plátano",
-  "uva",
-  "camisa",
-  "pantalón",
-  "chaqueta",
-  "falda",
-  "perro",
+export const WORD_LIST = [
   "gato",
+  "perro",
   "vaca",
   "caballo",
+  "camello",
+  "serpiente",
+  // "chaqueta",
+  // "falda",
+  // "perro",
+  // "gato",
+  // "vaca",
+  // "caballo",
 ];
 
 
