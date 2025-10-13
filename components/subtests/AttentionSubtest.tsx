@@ -9,6 +9,17 @@ import type { SubtestProps } from "@/types"
 import axios from "axios"
 import { useEvaluationStore } from "@/src/stores/evaluation"
 
+/**
+ * ============================================================================
+ *  AttentionSubtest (Letter Cancellation) — Rediseño UI/UX corporativo clínico
+ *  - No cambia la lógica ni el contrato API.
+ *  - Cambios visuales: tonos corporativos, tipografía jerarquizada, layout
+ *    sin scroll vertical (en desktop), matriz más ancha, feedback sutil.
+ *  - Mejora de textos e instrucciones en tono profesional.
+ *  - Barra superior "sticky" con métricas esenciales (tiempo, aciertos, errores).
+ * ============================================================================
+ */
+
 const ALL_LETTERS = [
   "A","B","C","D","E","F","G","H","I","J","K","L",
   "M","N","O","P","Q","R","S","T","U","V","W","X","Y","Z",
@@ -22,6 +33,20 @@ interface LetterCell {
   letter: string
   row: number
   col: number
+}
+
+// Paleta corporativa (solo para clases utilitarias / semántica local)
+const styles = {
+  backdrop: "bg-[#0E2F3C]", // azul hospital corporativo oscuro
+  surface: "bg-slate-50/60", // superficie clara pero no blanca
+  card: "bg-white/80 backdrop-blur border-slate-200",
+  kpiLabel: "text-slate-500",
+  kpiValue: "text-slate-900",
+  kpiGood: "text-emerald-600",
+  kpiBad: "text-rose-600",
+  primary: "bg-[#0E7C86] hover:bg-[#0a646c] text-white",
+  outline: "border-slate-300 text-slate-800 hover:bg-slate-50",
+  targetBadge: "bg-emerald-600 text-white",
 }
 
 export function AttentionSubtest({ onComplete, onPause }: SubtestProps) {
@@ -42,10 +67,10 @@ export function AttentionSubtest({ onComplete, onPause }: SubtestProps) {
   const currentEvaluationID = useEvaluationStore((s) => s.currentEvaluation?.id)
 
   const finishNow = () => {
-  if (phase !== "active" || isFinishing) return
-  setIsFinishing(true)
-  completeSubtest()
- }
+    if (phase !== "active" || isFinishing) return
+    setIsFinishing(true)
+    completeSubtest()
+  }
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60)
@@ -172,31 +197,45 @@ export function AttentionSubtest({ onComplete, onPause }: SubtestProps) {
 
   if (phase === "instructions") {
     return (
-      <Card className="max-w-4xl mx-auto">
-        <CardHeader>
-          <CardTitle className="text-lg sm:text-xl lg:text-2xl">Instrucciones - Cancelación de Letras</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4 sm:space-y-6">
-          <div className="bg-blue-50 p-4 sm:p-6 rounded-lg">
-            <h4 className="font-semibold text-blue-900 mb-3 text-sm sm:text-base">¿Qué debe hacer?</h4>
-            <ul className="space-y-2 text-blue-800 text-sm sm:text-base">
-              <li>• Se le mostrará <strong>una letra objetivo</strong> fija en la parte superior.</li>
-              <li>• Verá una matriz de letras mezcladas.</li>
-              <li>• Debe pulsar <strong>todas</strong> las celdas donde aparezca esa letra.</li>
-              <li>• Cada celda solo puede pulsarse una vez.</li>
-              <li>• El test termina al agotar el tiempo o al completar todas las apariciones.</li>
-            </ul>
-          </div>
-          <div className="bg-yellow-50 p-3 sm:p-4 rounded-lg">
-            <p className="text-yellow-800 text-sm sm:text-base">
-              <strong>Duración:</strong> 5 minutos.
+      <div className={`min-h-[70vh] w-full ${styles.backdrop} py-8 sm:py-10 px-4`}>        
+        <div className="mx-auto max-w-5xl">
+          <header className="mb-6">
+            <h1 className="text-white/90 text-2xl sm:text-3xl font-semibold tracking-tight">
+              Cancelación de Letras
+            </h1>
+            <p className="text-white/70 text-sm sm:text-base mt-1 max-w-2xl">
+              Seleccione todas las apariciones de la letra objetivo en la matriz. Este subtest evalúa atención
+              sostenida y selectiva.
             </p>
-          </div>
-          <Button onClick={startSubtest} className="w-full text-sm sm:text-base" size="lg">
-            Comenzar Test de Cancelación
-          </Button>
-        </CardContent>
-      </Card>
+          </header>
+
+          <Card className={`${styles.card} shadow-xl`}>            
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg sm:text-xl lg:text-2xl text-slate-900">
+                Instrucciones
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              <div className="rounded-lg bg-slate-50 p-4 sm:p-5 border border-slate-200">
+                <h4 className="font-semibold text-slate-900 mb-3 text-sm sm:text-base">¿Qué debe hacer?</h4>
+                <ul className="space-y-2 text-slate-700 text-sm sm:text-base">
+                  <li>• Se mostrará <strong>una letra objetivo</strong> fija en la parte superior.</li>
+                  <li>• Verá una matriz amplia de letras mezcladas.</li>
+                  <li>• Pulse <strong>todas</strong> las celdas donde aparezca esa letra. Cada celda se registra una única vez.</li>
+                  <li>• El subtest finaliza al agotar el tiempo o al localizar todas las apariciones.</li>
+                </ul>
+              </div>
+              <div className="rounded-lg bg-amber-50 p-3 sm:p-4 border border-amber-200">
+                <p className="text-amber-900 text-sm sm:text-base"><strong>Duración:</strong> 5 minutos.</p>
+              </div>
+              <div className="flex gap-3 pt-1">
+                <Button onClick={startSubtest} size="lg" className={`${styles.primary} w-full sm:w-auto`}>Comenzar</Button>
+                <Button variant="outline" onClick={onPause} className={`hidden sm:inline-flex ${styles.outline}`}>Pausar</Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     )
   }
 
@@ -205,118 +244,130 @@ export function AttentionSubtest({ onComplete, onPause }: SubtestProps) {
     const timeProgress = ((SUBTEST_DURATION - timeRemaining) / SUBTEST_DURATION) * 100
 
     return (
-      <div className="space-y-4 sm:space-y-6 max-w-6xl mx-auto">
-        <Card>
-          <CardContent className="p-3 sm:p-4 lg:p-6">
-            <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4 mb-4">
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-6">
-                <div className="text-center">
-                  <p className="text-xs sm:text-sm text-gray-600 mb-1">Letra a buscar</p>
-                  <Badge
-                    variant="default"
-                    className="text-xl sm:text-2xl lg:text-3xl px-3 sm:px-4 lg:px-6 py-2 sm:py-3 bg-green-600"
-                  >
-                    {targetLetter || "—"}
-                  </Badge>
+      <div className={`min-h-[100dvh] ${styles.backdrop} px-3 sm:px-4 py-3 sm:py-4`}>        
+        <div className="mx-auto max-w-[1200px] grid grid-rows-[auto_1fr] gap-3 sm:gap-4">
+          {/* Barra superior sticky con KPIs */}
+          <div className="sticky top-0 z-20">
+            <Card className={`${styles.card} shadow-lg`}>
+              <CardContent className="p-3 sm:p-4">
+                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 sm:gap-4 w-full">
+                    <div className="text-center">
+                      <p className={`${styles.kpiLabel} text-xs sm:text-sm`}>Letra objetivo</p>
+                      <Badge variant="default" className={`text-xl sm:text-2xl px-3 sm:px-4 py-2 ${styles.targetBadge}`}>
+                        {targetLetter || "—"}
+                      </Badge>
+                    </div>
+                    <div className="text-center">
+                      <p className={`${styles.kpiLabel} text-xs sm:text-sm`}>Aciertos</p>
+                      <p className={`text-lg sm:text-xl font-semibold ${styles.kpiGood}`}>{correctHits}</p>
+                    </div>
+                    <div className="text-center">
+                      <p className={`${styles.kpiLabel} text-xs sm:text-sm`}>Errores</p>
+                      <p className={`text-lg sm:text-xl font-semibold ${styles.kpiBad}`}>{falseAlarms}</p>
+                    </div>
+                    <div className="text-center">
+                      <p className={`${styles.kpiLabel} text-xs sm:text-sm`}>Tiempo</p>
+                      <p className="text-base sm:text-lg font-mono font-bold text-slate-900">{formatTime(timeRemaining)}</p>
+                    </div>
+                    <div className="hidden sm:flex items-center justify-center">
+                      <Button onClick={finishNow} disabled={isFinishing} className={`${styles.primary} font-semibold w-full sm:w-auto`}>
+                        {isFinishing ? "Finalizando…" : "Finalizar test"}
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="sm:hidden">
+                    <Button onClick={finishNow} disabled={isFinishing} className={`${styles.primary} w-full`}>
+                      {isFinishing ? "Finalizando…" : "Finalizar test"}
+                    </Button>
+                  </div>
                 </div>
-                <div className="text-center">
-                  <p className="text-xs sm:text-sm text-gray-600">Aciertos</p>
-                  <p className="text-lg sm:text-xl lg:text-2xl font-bold text-green-600">{correctHits}</p>
+                <div className="mt-3">
+                  <Progress value={timeProgress} className="h-2" />
                 </div>
-                <div className="text-center">
-                  <p className="text-xs sm:text-sm text-gray-600">Errores</p>
-                  <p className="text-lg sm:text-xl lg:text-2xl font-bold text-red-600">{falseAlarms}</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-xs sm:text-sm text-gray-600">Tiempo</p>
-                  <p className="text-base sm:text-lg lg:text-xl font-mono font-bold">
-                    {formatTime(timeRemaining)}
-                  </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Zona principal con matriz y CTA secundarias */}
+          <Card className={`${styles.card} shadow-xl`}>
+            <CardContent className="p-3 sm:p-4 lg:p-6">
+              <div className="text-center mb-3 sm:mb-4">
+                <p className="text-sm sm:text-base text-slate-700">
+                  Seleccione todas las celdas con la letra <strong className="text-emerald-700">{targetLetter}</strong>
+                </p>
+              </div>
+
+              {/* Contenedor para forzar que la matriz sea ancha y visible sin scroll vertical en desktop */}
+              <div className="w-full mx-auto">
+                <div
+                  className="grid gap-0.5 sm:gap-1 mx-auto"
+                  style={{ gridTemplateColumns: `repeat(${MATRIX_COLS}, minmax(0, 1fr))` }}
+                >
+                  {letterMatrix.map((cell, index) => {
+                    const isClicked = clicked[index]
+                    const isCorrectCell = cell.letter === targetLetter
+
+                    // Feedback SOLO de lo clicado
+                    const base = "aspect-square font-semibold border rounded select-none transition-all duration-150 min-h-[18px] min-w-[18px] text-[10px] sm:text-[11px] md:text-[12px] lg:text-[13px] flex items-center justify-center"
+
+                    const stateClass = isClicked
+                      ? isCorrectCell
+                        ? "bg-emerald-50 border-emerald-300 text-emerald-800"
+                        : "bg-rose-50 border-rose-300 text-rose-800"
+                      : "bg-slate-100 border-slate-300 hover:bg-slate-200 hover:border-slate-400 active:bg-slate-300 cursor-pointer"
+
+                    return (
+                      <button
+                        key={`cell-${index}`}
+                        onClick={() => handleLetterClick(index)}
+                        disabled={isClicked}
+                        aria-label={`Letra ${cell.letter}`}
+                        className={`${base} ${stateClass}`}
+                      >
+                        {cell.letter}
+                      </button>
+                    )
+                  })}
                 </div>
               </div>
-            </div>
 
-            {/* Progreso por tiempo (NO por objetivos) */}
-            <Progress value={timeProgress} className="h-2 sm:h-3" />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-3 sm:p-4 lg:p-6">
-            <div className="text-center mb-4">
-              <p className="text-sm sm:text-base text-gray-700">
-                Pulse todas las celdas con la letra{" "}
-                <strong className="text-green-600">{targetLetter}</strong>
-              </p>
-            </div>
-
-            <div
-              className="grid gap-0.5 sm:gap-1 max-w-full mx-auto overflow-auto"
-              style={{ gridTemplateColumns: `repeat(${MATRIX_COLS}, minmax(0, 1fr))` }}
-            >
-              {letterMatrix.map((cell, index) => {
-                const isClicked = clicked[index]
-                const isCorrectCell = cell.letter === targetLetter
-
-                // Damos feedback SOLO de lo ya clicado (verde si correcto, rojo si error).
-                const stateClass = isClicked
-                  ? isCorrectCell
-                    ? "bg-green-100 border-green-400 text-green-800"
-                    : "bg-red-100 border-red-300 text-red-800"
-                  : "bg-white hover:bg-gray-100 hover:border-gray-400 active:bg-gray-200 cursor-pointer"
-
-                return (
-                  <button
-                    key={`cell-${index}`}
-                    onClick={() => handleLetterClick(index)}
-                    disabled={isClicked}
-                    aria-label={`Letra ${cell.letter}`}
-                    className={`aspect-square text-[8px] sm:text-[10px] lg:text-xs font-bold border border-gray-300 rounded transition-all duration-200
-                      min-h-[16px] sm:min-h-[20px] lg:min-h-[24px] min-w-[16px] sm:min-w-[20px] lg:min-w-[24px] ${stateClass}`}
-                  >
-                    {cell.letter}
-                  </button>
-                )
-              })}
-            </div>
-
-            <div className="flex justify-center mt-4 sm:mt-6">
-              <Button variant="outline" onClick={onPause} className="text-sm sm:text-base bg-transparent">
-                Pausar Test
-              </Button>
-               <Button
-                 onClick={finishNow}
-                 disabled={isFinishing}
-                 className="text-sm sm:text-base font-semibold"
-               >
-                {isFinishing ? "Finalizando..." : "Finalizar test"}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+              <div className="flex justify-center gap-3 mt-4 sm:mt-6">
+                <Button variant="outline" onClick={onPause} className={styles.outline}>Pausar</Button>
+                <Button onClick={finishNow} disabled={isFinishing} className={`${styles.primary} font-semibold`}>
+                  {isFinishing ? "Finalizando…" : "Finalizar test"}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     )
   }
 
   // completed (post-test sí mostramos el total encontrado y total real)
   return (
-    <Card className="max-w-2xl mx-auto">
-      <CardHeader>
-        <CardTitle className="text-lg sm:text-xl">Test de Cancelación Completado</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <p className="text-center text-gray-600 mb-4 text-sm sm:text-base">
-          El test ha finalizado. Los resultados se han guardado.
-        </p>
-        <div className="bg-green-50 p-4 rounded-lg">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 text-sm sm:text-base">
-            <div><strong>Letra objetivo:</strong> {targetLetter}</div>
-            <div><strong>Total objetivos en matriz:</strong> {targetTotal}</div>
-            <div><strong>Aciertos:</strong> {correctHits}</div>
-            <div><strong>Errores:</strong> {falseAlarms}</div>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+    <div className={`${styles.backdrop} min-h-[70vh] py-8 px-4`}>
+      <div className="mx-auto max-w-3xl">
+        <Card className={`${styles.card} shadow-xl`}>
+          <CardHeader>
+            <CardTitle className="text-lg sm:text-xl text-slate-900">Subtest completado</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-center text-slate-600 mb-4 text-sm sm:text-base">
+              El subtest ha finalizado. Los resultados se han guardado correctamente.
+            </p>
+            <div className="rounded-lg bg-slate-50 p-4 border border-slate-200">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 text-sm sm:text-base text-slate-800">
+                <div><strong>Letra objetivo:</strong> {targetLetter}</div>
+                <div><strong>Total objetivos en matriz:</strong> {targetTotal}</div>
+                <div><strong>Aciertos:</strong> {correctHits}</div>
+                <div><strong>Errores:</strong> {falseAlarms}</div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
   )
 }

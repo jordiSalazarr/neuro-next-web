@@ -13,6 +13,8 @@ import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, Dialog
 import type { SubtestProps } from "@/types";
 import { useEvaluationStore } from "@/src/stores/evaluation";
 
+// ================== Tipos ==================
+
 type DrawingPoint = { x: number; y: number };
 type DrawingStroke = { points: DrawingPoint[]; timestamp: number; order: number };
 
@@ -24,6 +26,16 @@ type Props = SubtestProps & {
   submitPath?: string; // por defecto: /v1/visual-spatial/subtests
   /** Solo se usará el primer item si pasas múltiple */
   times?: (string | ClockItem)[];
+};
+
+// ================== Tokens de estilo (coherentes con el resto) ==================
+const styles = {
+  backdrop: "bg-[#0E2F3C]", // azul hospital
+  card: "bg-white/80 backdrop-blur border-slate-200",
+  primary: "bg-[#0E7C86] hover:bg-[#0a646c] text-white",
+  outline: "border-slate-300 text-slate-800 hover:bg-slate-50",
+  kpiLabel: "text-slate-500",
+  kpiValue: "text-slate-900",
 };
 
 const DEFAULT_CLOCK: ClockItem = { time: "11:10", description: "once y diez" };
@@ -92,7 +104,7 @@ function PerfectClock({ hour, min, size = 260 }: { hour: number; min: number; si
         const angle = n * 30;
         const rr = r * 0.78;
         const x = cx + rr * Math.cos(deg2rad(angle));
-        const y = cy + rr * Math.sin(deg2rad(angle)) + 4; // compensación vertical
+        const y = cy + rr * Math.sin(deg2rad(angle)) + 4;
         return (
           <text key={n} x={x} y={y} fontSize={size * 0.08} textAnchor="middle" fill="#111827" fontFamily="system-ui, -apple-system, Segoe UI, Roboto">
             {n}
@@ -161,7 +173,7 @@ export function VisuospatialSubtest({
     // Trazos ya pintados
     strokes.forEach((s) => {
       if (s.points.length > 1) {
-        ctx.strokeStyle = "#000";
+        ctx.strokeStyle = "#0f172a"; // slate-900
         ctx.lineWidth = 2;
         ctx.lineCap = "round";
         ctx.lineJoin = "round";
@@ -174,7 +186,7 @@ export function VisuospatialSubtest({
 
     // Trazo actual
     if (currentStroke.length > 1) {
-      ctx.strokeStyle = "#3B82F6";
+      ctx.strokeStyle = "#0E7C86"; // corporativo
       ctx.lineWidth = 2;
       ctx.lineCap = "round";
       ctx.lineJoin = "round";
@@ -268,6 +280,7 @@ export function VisuospatialSubtest({
   };
 
   const submitScore = async () => {
+    const evaluationId = useEvaluationStore.getState().currentEvaluation?.id;
     if (!evaluationId) {
       console.error("No hay evaluationId en el store");
       return;
@@ -305,210 +318,222 @@ export function VisuospatialSubtest({
     }
   };
 
-  // UI
+  // ================== UI ==================
+
   if (phase === "instructions") {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Test del Reloj (CDT) — Instrucciones</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="bg-blue-50 p-6 rounded-lg">
-            <h4 className="font-semibold text-blue-900 mb-3">Indicación al paciente</h4>
-            <ul className="space-y-2 text-blue-800">
-              <li>• Dibuje un reloj que muestre la hora indicada.</li>
-              <li>• Dibuje un círculo, los números del 1 al 12 y dos manecillas.</li>
-              <li>• Use el ratón o el dedo para dibujar.</li>
-            </ul>
-          </div>
-          <Button onClick={startSubtest} className="w-full" size="lg">
-            Comenzar
-          </Button>
-        </CardContent>
-      </Card>
-    );
-  }
+      <div className={`min-h-[70vh] w-full ${styles.backdrop} py-8 sm:py-10 px-4`}>
+        <div className="mx-auto max-w-4xl">
+          <header className="mb-6">
+            <h1 className="text-white/90 text-2xl sm:text-3xl font-semibold tracking-tight">Test del Reloj (CDT)</h1>
+            <p className="text-white/70 text-sm sm:text-base mt-1 max-w-2xl">
+              Dibuje un reloj que muestre la hora indicada. Incluya círculo, números 1–12 y dos manecillas.
+            </p>
+          </header>
 
- // --- DRAWING (sin reloj perfecto) ---
-  if (phase === "drawing") {
-    return (
-      <div className="space-y-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <span>
-                Dibuje un reloj que marque las{" "}
-                <strong>{targetClock.time}{" "}</strong>
-                {targetClock.description && (
-                  <span className="text-muted-foreground">({targetClock.description})</span>
-                )}
-              </span>
-              <div className="flex gap-2 items-center">
-                <Badge variant="default" className="text-lg px-3 py-1">
-                  {targetClock.time}
-                </Badge>
-                <Badge variant="outline">Trazos: {strokes.length}</Badge>
+          <Card className={`${styles.card} shadow-xl`}>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg sm:text-xl lg:text-2xl text-slate-900">Instrucciones</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              <div className="rounded-lg bg-slate-50 p-4 sm:p-5 border border-slate-200">
+                <h4 className="font-semibold text-slate-900 mb-3 text-sm sm:text-base">Indicación al paciente</h4>
+                <ul className="space-y-2 text-slate-700 text-sm sm:text-base">
+                  <li>• Dibuje un reloj que muestre la hora indicada.</li>
+                  <li>• Dibuje un círculo, los números del 1 al 12 y dos manecillas.</li>
+                  <li>• Use el ratón o el dedo para dibujar.</li>
+                </ul>
               </div>
-            </CardTitle>
-          </CardHeader>
-
-          <CardContent className="space-y-4">
-            {/* SOLO lienzo para el paciente; sin reloj de referencia */}
-            <div className="flex justify-center">
-              <canvas
-                ref={canvasRef}
-                width={420}
-                height={420}
-                className="border-2 border-gray-300 rounded-lg bg-white cursor-crosshair touch-none"
-              />
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-              <Button variant="outline" onClick={clearCanvas}>
-                Limpiar
-              </Button>
-              <Button
-                variant="outline"
-                onClick={async () => {
-                  const canvas = canvasRef.current;
-                  if (!canvas) return;
-                  const blob = await canvasToPngBlob(canvas);
-                  const url = URL.createObjectURL(blob);
-                  const a = document.createElement("a");
-                  a.href = url;
-                  a.download = `reloj-${targetClock.time}.png`;
-                  a.click();
-                  URL.revokeObjectURL(url);
-                }}
-              >
-                Descargar PNG
-              </Button>
-              <Button
-                onClick={proceedToEvaluation}
-                disabled={strokes.length === 0}
-                className="font-semibold"
-              >
-                Pasar a evaluación
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+              <div className="flex justify-end gap-3">
+                {onPause && (
+                  <Button variant="outline" onClick={onPause} className={styles.outline}>Pausar</Button>
+                )}
+                <Button onClick={startSubtest} className={styles.primary} size="lg">Comenzar</Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     );
   }
 
+  // --- DRAWING (sin reloj perfecto) ---
+  if (phase === "drawing") {
+    return (
+      <div className={`min-h-[70vh] w-full ${styles.backdrop} py-8 px-4`}>
+        <div className="mx-auto max-w-4xl">
+          <Card className={`${styles.card} shadow-xl`}>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between text-slate-900">
+                <span>
+                  Dibuje un reloj que marque las <strong>{targetClock.time} </strong>
+                  {targetClock.description && (
+                    <span className="text-slate-500">({targetClock.description})</span>
+                  )}
+                </span>
+                <div className="flex gap-2 items-center">
+                  <Badge variant="default" className="text-base px-3 py-1">{targetClock.time}</Badge>
+                  <Badge variant="outline">Trazos: {strokes.length}</Badge>
+                </div>
+              </CardTitle>
+            </CardHeader>
+
+            <CardContent className="space-y-4">
+              {/* SOLO lienzo para el paciente; sin reloj de referencia */}
+              <div className="flex justify-center">
+                <canvas
+                  ref={canvasRef}
+                  width={420}
+                  height={420}
+                  className="border border-slate-300 rounded-lg bg-white cursor-crosshair touch-none shadow-sm"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <Button variant="outline" onClick={clearCanvas} className={styles.outline}>
+                  Limpiar
+                </Button>
+                <Button
+                  variant="outline"
+                  className={styles.outline}
+                  onClick={async () => {
+                    const canvas = canvasRef.current;
+                    if (!canvas) return;
+                    const blob = await canvasToPngBlob(canvas);
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.href = url;
+                    a.download = `reloj-${targetClock.time}.png`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                  }}
+                >
+                  Descargar PNG
+                </Button>
+                <Button onClick={proceedToEvaluation} disabled={strokes.length === 0} className={`${styles.primary} font-semibold`}>
+                  Pasar a evaluación
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   if (phase === "evaluating") {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Evaluación (Shulman 0–5)</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="grid gap-6 sm:grid-cols-2">
-            <div>
-              <Label className="block mb-2">Dibujo del paciente</Label>
-              {userImageUrl ? (
-                <img
-                  src={userImageUrl}
-                  alt="Dibujo del paciente"
-                  className="border rounded-lg w-full max-w-[420px] bg-white"
-                />
-              ) : (
-                <div className="text-sm text-muted-foreground">No hay imagen</div>
-              )}
-            </div>
-            <div>
-              <Label className="block mb-2">
-                Reloj de referencia — {targetClock.time}{" "}
-                {targetClock.description && (
-                  <span className="text-muted-foreground">({targetClock.description})</span>
-                )}
-              </Label>
-              <div className="border rounded-lg p-3 bg-white inline-block">
-                <PerfectClock hour={hour} min={min} size={260} />
-              </div>
-            </div>
-          </div>
-
-          <div className="grid gap-4">
-            <div>
-              <Label className="mb-2 block">Puntuación (0–5)</Label>
-              <RadioGroup value={score} onValueChange={setScore} className="grid grid-cols-3 gap-3 sm:grid-cols-6">
-                {["0","1","2","3","4","5"].map((v) => (
-                  <div key={v} className="flex items-center space-x-2 border rounded-md px-3 py-2">
-                    <RadioGroupItem id={`score-${v}`} value={v} />
-                    <Label htmlFor={`score-${v}`}>{v}</Label>
+      <div className={`min-h-[70vh] w-full ${styles.backdrop} py-8 px-4`}>
+        <div className="mx-auto max-w-5xl">
+          <Card className={`${styles.card} shadow-xl`}>
+            <CardHeader>
+              <CardTitle className="text-slate-900">Evaluación (Shulman 0–5)</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid gap-6 sm:grid-cols-2">
+                <div>
+                  <Label className="block mb-2 text-slate-800">Dibujo del paciente</Label>
+                  {userImageUrl ? (
+                    <img
+                      src={userImageUrl}
+                      alt="Dibujo del paciente"
+                      className="border border-slate-300 rounded-lg w-full max-w-[420px] bg-white shadow-sm"
+                    />
+                  ) : (
+                    <div className="text-sm text-slate-500">No hay imagen</div>
+                  )}
+                </div>
+                <div>
+                  <Label className="block mb-2 text-slate-800">
+                    Reloj de referencia — {targetClock.time}{" "}
+                    {targetClock.description && <span className="text-slate-500">({targetClock.description})</span>}
+                  </Label>
+                  <div className="border border-slate-200 rounded-lg p-3 bg-white inline-block shadow-sm">
+                    <PerfectClock hour={hour} min={min} size={260} />
                   </div>
-                ))}
-              </RadioGroup>
-            </div>
-
-            <div>
-              <Label className="mb-2 block">Observaciones</Label>
-              <Textarea
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                placeholder="Anota errores de números, orientación de manecillas, espaciado, etc."
-                rows={4}
-              />
-            </div>
-
-            <div className="flex flex-wrap gap-2">
-              <Dialog>
-                <DialogTrigger asChild>
-                  <Button variant="outline">Ver criterios (Shulman 0–5)</Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Escala de Shulman (0–5)</DialogTitle>
-                    <DialogDescription asChild>
-                      <div className="text-sm mt-3 space-y-2">
-                        <p><strong>5</strong> — Dibujo correcto: círculo, números 1–12 bien colocados y hora correcta con ambas manecillas.</p>
-                        <p><strong>4</strong> — Leves errores (p. ej., espaciado algo irregular o colocación ligera de números) con hora correcta.</p>
-                        <p><strong>3</strong> — Errores moderados: números desordenados/duplicados/omisos; hora aproximada o manos imprecisas.</p>
-                        <p><strong>2</strong> — Desorganización notable: números concentrados en un lado; manos ausentes o claramente incorrectas.</p>
-                        <p><strong>1</strong> — Incapacidad para representar un reloj de forma comprensible.</p>
-                        <p><strong>0</strong> — Ningún intento o dibujo irreconocible.</p>
-                      </div>
-                    </DialogDescription>
-                  </DialogHeader>
-                </DialogContent>
-              </Dialog>
-
-              <Button
-                onClick={() => setPhase("drawing")}
-                variant="ghost"
-              >
-                Volver al dibujo
-              </Button>
-
-              <div className="ml-auto">
-                <Button onClick={submitScore} disabled={submitting || !evaluationId} className="font-semibold">
-                  {submitting ? "Guardando..." : "Guardar puntuación"}
-                </Button>
+                </div>
               </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+
+              <div className="grid gap-4">
+                <div>
+                  <Label className="mb-2 block text-slate-800">Puntuación (0–5)</Label>
+                  <RadioGroup value={score} onValueChange={setScore} className="grid grid-cols-3 gap-3 sm:grid-cols-6">
+                    {["0","1","2","3","4","5"].map((v) => (
+                      <div key={v} className="flex items-center space-x-2 border border-slate-200 rounded-md px-3 py-2 bg-white/80">
+                        <RadioGroupItem id={`score-${v}`} value={v} />
+                        <Label htmlFor={`score-${v}`}>{v}</Label>
+                      </div>
+                    ))}
+                  </RadioGroup>
+                </div>
+
+                <div>
+                  <Label className="mb-2 block text-slate-800">Observaciones</Label>
+                  <Textarea
+                    value={note}
+                    onChange={(e) => setNote(e.target.value)}
+                    placeholder="Errores de números, orientación de manecillas, espaciado, etc."
+                    rows={4}
+                    className="bg-slate-50 border-slate-300 focus-visible:ring-0 focus-visible:border-slate-400"
+                  />
+                </div>
+
+                <div className="flex flex-wrap gap-2 items-center">
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button variant="outline" className={styles.outline}>Ver criterios (Shulman 0–5)</Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Escala de Shulman (0–5)</DialogTitle>
+                        <DialogDescription asChild>
+                          <div className="text-sm mt-3 space-y-2 text-slate-800">
+                            <p><strong>5</strong> — Dibujo correcto: círculo, números 1–12 bien colocados y hora correcta con ambas manecillas.</p>
+                            <p><strong>4</strong> — Leves errores (p. ej., espaciado algo irregular o colocación ligera de números) con hora correcta.</p>
+                            <p><strong>3</strong> — Errores moderados: números desordenados/duplicados/omisos; hora aproximada o manos imprecisas.</p>
+                            <p><strong>2</strong> — Desorganización notable: números concentrados en un lado; manos ausentes o claramente incorrectas.</p>
+                            <p><strong>1</strong> — Incapacidad para representar un reloj de forma comprensible.</p>
+                            <p><strong>0</strong> — Ningún intento o dibujo irreconocible.</p>
+                          </div>
+                        </DialogDescription>
+                      </DialogHeader>
+                    </DialogContent>
+                  </Dialog>
+
+                  <Button onClick={() => setPhase("drawing")} variant="ghost">Volver al dibujo</Button>
+
+                  <div className="ml-auto">
+                    <Button onClick={submitScore} disabled={submitting || !evaluationId} className={`${styles.primary} font-semibold`}>
+                      {submitting ? "Guardando…" : "Guardar puntuación"}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     );
   }
 
   // submitted
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Puntuación enviada</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="bg-green-50 p-4 rounded-lg text-green-900">
-          Puntuación (Shulman): <strong>{score}</strong>. {note ? "Observaciones guardadas." : "Sin observaciones."}
-        </div>
-        <div className="text-right">
-          <Button onClick={() => onPause?.()}>Cerrar</Button>
-        </div>
-      </CardContent>
-    </Card>
+    <div className={`${styles.backdrop} min-h-[60vh] py-8 px-4`}>
+      <div className="mx-auto max-w-3xl">
+        <Card className={`${styles.card} shadow-xl`}>
+          <CardHeader>
+            <CardTitle className="text-slate-900">Puntuación enviada</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="bg-emerald-50 p-4 rounded-lg text-emerald-900 border border-emerald-200">
+              Puntuación (Shulman): <strong>{score}</strong>. {note ? "Observaciones guardadas." : "Sin observaciones."}
+            </div>
+            <div className="text-right">
+              <Button onClick={() => onPause?.()} className={styles.primary}>Cerrar</Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
   );
 }

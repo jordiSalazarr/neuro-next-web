@@ -53,6 +53,17 @@ const DISPLAY_TIME = 10 // segundos para memorizar
 const CANVAS_CSS_WIDTH = 400
 const CANVAS_CSS_HEIGHT = 350
 
+// ================== UI Tokens ==================
+
+const styles = {
+  backdrop: "bg-[#0E2F3C]", // azul corporativo clínico
+  card: "bg-white/80 backdrop-blur border-slate-200",
+  primary: "bg-[#0E7C86] hover:bg-[#0a646c] text-white",
+  outline: "border-slate-300 text-slate-800 hover:bg-slate-50",
+  kpiLabel: "text-slate-500",
+  kpiValue: "text-slate-900",
+}
+
 // ================== Component ==================
 
 export function VisualMemorySubtest({
@@ -206,7 +217,7 @@ export function VisualMemorySubtest({
     // saved strokes
     strokes.forEach((stroke) => {
       if (stroke.points.length > 1) {
-        ctx.strokeStyle = "#000"
+        ctx.strokeStyle = "#0f172a" // slate-900
         ctx.lineWidth = 2
         ctx.beginPath()
         ctx.moveTo(stroke.points[0].x, stroke.points[0].y)
@@ -215,9 +226,9 @@ export function VisualMemorySubtest({
       }
     })
 
-    // current stroke
+    // current stroke (feedback sutil)
     if (currentStroke.length > 1) {
-      ctx.strokeStyle = "#3B82F6"
+      ctx.strokeStyle = "#0E7C86"
       ctx.lineWidth = 2
       ctx.beginPath()
       ctx.moveTo(currentStroke[0].x, currentStroke[0].y)
@@ -257,12 +268,10 @@ export function VisualMemorySubtest({
 
     const p = getRelativePoint(canvas, e)
 
-    // Optional: adjust line width by pressure when enabled (visual only while drawing next repaint)
-    // We keep stored points as x/y only; pressure affects rendering style if you decide to extend it later.
+    // Optional: preview de presión
     const pressure = usePressure ? e.pressure || 0.5 : 0
     if (pressure) {
-      // quick preview trick: vary the last segment width by pressure during the live stroke
-      // (kept simple: we don't store widths; you can extend DrawingPoint with width if needed)
+      // (Puedes extender DrawingPoint para almacenar grosor si lo necesitas)
     }
 
     setCurrentStroke((prev) => [...prev, { x: p.x, y: p.y }])
@@ -316,7 +325,7 @@ export function VisualMemorySubtest({
       return
     }
     if (score === "") {
-      setErrorMsg("Selecciona una puntuación (0–2).")
+      setErrorMsg("Seleccione una puntuación (0–2).")
       return
     }
 
@@ -355,7 +364,7 @@ export function VisualMemorySubtest({
 
       onComplete?.(subtestResult)
     } catch (err: any) {
-      const msg = err?.response?.data?.message || err?.message || "No se pudo enviar la evaluación. Inténtalo de nuevo."
+      const msg = err?.response?.data?.message || err?.message || "No se pudo enviar la evaluación. Inténtelo de nuevo."
       setErrorMsg(msg)
     } finally {
       setIsSubmitting(false)
@@ -366,190 +375,216 @@ export function VisualMemorySubtest({
 
   if (phase === "instructions") {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Instrucciones - Memoria Visual</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="bg-purple-50 p-4 rounded-lg">
-            <ul className="space-y-2 text-purple-900">
-              <li>• Verás 3 figuras durante 10 segundos.</li>
-              <li>• Memoriza sus formas, tamaños y posiciones.</li>
-              <li>• Después, dibuja lo que recuerdes.</li>
-              <li>• Finalmente, un evaluador asignará una puntuación (0–2).</li>
-            </ul>
-          </div>
-          <Button size="lg" className="w-full" onClick={startSubtest}>
-            Comenzar
-          </Button>
-        </CardContent>
-      </Card>
+      <div className={`min-h-[70vh] w-full ${styles.backdrop} py-8 sm:py-10 px-4`}>
+        <div className="mx-auto max-w-4xl">
+          <header className="mb-6">
+            <h1 className="text-white/90 text-2xl sm:text-3xl font-semibold tracking-tight">Memoria Visual</h1>
+            <p className="text-white/70 text-sm sm:text-base mt-1 max-w-2xl">
+              Verá tres figuras durante 10 segundos. Memorice forma, tamaño y posición; después deberá reproducirlas.
+            </p>
+          </header>
+
+          <Card className={`${styles.card} shadow-xl`}>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg sm:text-xl lg:text-2xl text-slate-900">Instrucciones</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              <div className="rounded-lg bg-slate-50 p-4 sm:p-5 border border-slate-200">
+                <ul className="space-y-2 text-slate-700 text-sm sm:text-base">
+                  <li>• Verá 3 figuras durante 10 segundos.</li>
+                  <li>• Memorice sus formas, tamaños y posiciones.</li>
+                  <li>• A continuación, dibuje lo que recuerde.</li>
+                  <li>• Finalmente, el evaluador asignará una puntuación (0–2).</li>
+                </ul>
+              </div>
+              <div className="flex justify-end gap-3">
+                {onPause && (
+                  <Button variant="outline" onClick={onPause} className={styles.outline}>Pausar</Button>
+                )}
+                <Button size="lg" className={styles.primary} onClick={startSubtest}>Comenzar</Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     )
   }
 
   if (phase === "study") {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <span>Memoriza las figuras</span>
-            <Badge variant="default" className="text-lg px-3 py-1">{studyTimeRemaining}s</Badge>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="mb-3">
-            <Progress value={((DISPLAY_TIME - studyTimeRemaining) / DISPLAY_TIME) * 100} className="h-2" />
-          </div>
-          <div className="flex justify-center">
-             <CardContent>
-
-  <div className="flex justify-center">
-    <canvas
-      ref={studyCanvasRef}
-      className="border-2 border-gray-300 rounded-lg bg-white select-none"
-      style={{ touchAction: "none", width: CANVAS_CSS_WIDTH, height: CANVAS_CSS_HEIGHT }}
-      onContextMenu={(e) => e.preventDefault()}
-    />
-  </div>
-</CardContent>
-
-
-          </div>
-        </CardContent>
-      </Card>
+      <div className={`min-h-[60vh] w-full ${styles.backdrop} py-6 px-4`}>
+        <div className="mx-auto max-w-4xl">
+          <Card className={`${styles.card} shadow-xl`}>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between text-slate-900">
+                <span>Memorice las figuras</span>
+                <Badge variant="default" className="text-base px-3 py-1">{studyTimeRemaining}s</Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="mb-3">
+                <Progress value={((DISPLAY_TIME - studyTimeRemaining) / DISPLAY_TIME) * 100} className="h-2" />
+              </div>
+              <div className="flex justify-center">
+                <canvas
+                  ref={studyCanvasRef}
+                  className="border border-slate-300 rounded-lg bg-white select-none shadow-sm"
+                  style={{ touchAction: "none", width: CANVAS_CSS_WIDTH, height: CANVAS_CSS_HEIGHT }}
+                  onContextMenu={(e) => e.preventDefault()}
+                />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     )
   }
 
   if (phase === "recall") {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <span>Dibuja las figuras</span>
-            <div className="flex gap-2 items-center">
-              <Badge variant="outline">Trazos: {strokes.length}</Badge>
-              <Button variant="outline" size="sm" onClick={() => setUsePressure((v) => !v)}>
-                {usePressure ? "Presión: ON" : "Presión: OFF"}
-              </Button>
-              <Button variant="outline" size="sm" onClick={clearCanvas}>Limpiar</Button>
-            </div>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex justify-center mb-4">
-            <canvas
-              ref={drawCanvasRef}
-              className="border-2 border-gray-300 rounded-lg bg-white cursor-crosshair select-none"
-              style={{ touchAction: "none", width: CANVAS_CSS_WIDTH, height: CANVAS_CSS_HEIGHT }}
-              onPointerDown={beginStroke}
-              onPointerMove={moveStroke}
-              onPointerUp={endStroke}
-              onPointerCancel={endStroke}
-              onPointerLeave={endStroke}
-              onContextMenu={(e) => e.preventDefault()}
-            />
-          </div>
-          <p className="text-center text-gray-600 mb-4">Dibuja las figuras en las mismas posiciones aproximadas.</p>
-          <div className="flex justify-between">
-            <Button variant="outline" onClick={onPause}>Pausar</Button>
-            <Button onClick={goToEvaluation}>Ir a evaluación</Button>
-          </div>
-        </CardContent>
-      </Card>
+      <div className={`min-h-[70vh] w-full ${styles.backdrop} py-8 px-4`}>
+        <div className="mx-auto max-w-4xl">
+          <Card className={`${styles.card} shadow-xl`}>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between text-slate-900">
+                <span>Dibuje las figuras</span>
+                <div className="flex gap-2 items-center">
+                  <Badge variant="outline">Trazos: {strokes.length}</Badge>
+                  <Button variant="outline" size="sm" onClick={() => setUsePressure((v) => !v)} className={styles.outline}>
+                    {usePressure ? "Presión: ON" : "Presión: OFF"}
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={clearCanvas} className={styles.outline}>Limpiar</Button>
+                </div>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex justify-center mb-4">
+                <canvas
+                  ref={drawCanvasRef}
+                  className="border border-slate-300 rounded-lg bg-white cursor-crosshair select-none shadow-sm"
+                  style={{ touchAction: "none", width: CANVAS_CSS_WIDTH, height: CANVAS_CSS_HEIGHT }}
+                  onPointerDown={beginStroke}
+                  onPointerMove={moveStroke}
+                  onPointerUp={endStroke}
+                  onPointerCancel={endStroke}
+                  onPointerLeave={endStroke}
+                  onContextMenu={(e) => e.preventDefault()}
+                />
+              </div>
+              <p className="text-center text-slate-600 mb-4">Reproduzca las figuras en posiciones aproximadas.</p>
+              <div className="flex justify-between">
+                {onPause && (
+                  <Button variant="outline" onClick={onPause} className={styles.outline}>Pausar</Button>
+                )}
+                <Button onClick={() => setPhase("evaluation")} className={styles.primary}>Ir a evaluación</Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     )
   }
 
   if (phase === "evaluation") {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Evaluación del dibujo</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {errorMsg && (
-            <div className="rounded-md border border-red-300 bg-red-50 text-red-800 p-3 text-sm">{errorMsg}</div>
-          )}
+      <div className={`min-h-[70vh] w-full ${styles.backdrop} py-8 px-4`}>
+        <div className="mx-auto max-w-5xl">
+          <Card className={`${styles.card} shadow-xl`}>
+            <CardHeader>
+              <CardTitle className="text-slate-900">Evaluación del dibujo</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {errorMsg && (
+                <div className="rounded-md border border-rose-300 bg-rose-50 text-rose-800 p-3 text-sm">{errorMsg}</div>
+              )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <h4 className="font-semibold mb-2">Figura original</h4>
-              <canvas
-                ref={originalCanvasRef}
-                className="border rounded-lg bg-white select-none"
-                style={{ touchAction: "none", width: CANVAS_CSS_WIDTH, height: CANVAS_CSS_HEIGHT }}
-                onContextMenu={(e) => e.preventDefault()}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <h4 className="font-semibold mb-2 text-slate-900">Figura original</h4>
+                  <canvas
+                    ref={originalCanvasRef}
+                    className="border border-slate-300 rounded-lg bg-white select-none shadow-sm"
+                    style={{ touchAction: "none", width: CANVAS_CSS_WIDTH, height: CANVAS_CSS_HEIGHT }}
+                    onContextMenu={(e) => e.preventDefault()}
+                  />
+                </div>
+                <div>
+                  <h4 className="font-semibold mb-2 text-slate-900">Dibujo del paciente</h4>
+                  <canvas
+                    ref={drawCanvasRef}
+                    className="border border-slate-300 rounded-lg bg-white select-none shadow-sm"
+                    style={{ touchAction: "none", width: CANVAS_CSS_WIDTH, height: CANVAS_CSS_HEIGHT }}
+                    onContextMenu={(e) => e.preventDefault()}
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" className={styles.outline}>Ver criterios de puntuación</Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Criterios (0–2)</DialogTitle>
+                    </DialogHeader>
+                    <ul className="list-disc pl-6 space-y-2 text-slate-800">
+                      <li>2 puntos → Forma y orientación correctas.</li>
+                      <li>1 punto → Parcialmente correcta (forma reconocible con algún error: tamaño/orientación/incompleta).</li>
+                      <li>0 puntos → Incorrecta o irreconocible.</li>
+                    </ul>
+                  </DialogContent>
+                </Dialog>
+
+                <div className="grow" />
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-slate-600">Puntuación:</span>
+                  <Select value={score} onValueChange={setScore}>
+                    <SelectTrigger className="w-28">
+                      <SelectValue placeholder="0–2" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="2">2</SelectItem>
+                      <SelectItem value="1">1</SelectItem>
+                      <SelectItem value="0">0</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <Textarea
+                placeholder="Notas del evaluador (opcional)"
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                className="bg-slate-50 border-slate-300 focus-visible:ring-0 focus-visible:border-slate-400"
               />
-            </div>
-            <div>
-              <h4 className="font-semibold mb-2">Dibujo del paciente</h4>
-              <canvas
-                ref={drawCanvasRef}
-                className="border rounded-lg bg-white select-none"
-                style={{ touchAction: "none", width: CANVAS_CSS_WIDTH, height: CANVAS_CSS_HEIGHT }}
-                onContextMenu={(e) => e.preventDefault()}
-              />
-            </div>
-          </div>
 
-          <div className="flex items-center gap-3">
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button variant="outline">Ver criterios de puntuación</Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Criterios (0–2)</DialogTitle>
-                </DialogHeader>
-                <ul className="list-disc pl-6 space-y-2">
-                  <li>2 puntos → Forma y orientación correctas.</li>
-                  <li>1 punto → Parcialmente correcta (forma reconocible pero con algún error: tamaño/orientación/incompleta).</li>
-                  <li>0 puntos → Incorrecta o irreconocible.</li>
-                </ul>
-              </DialogContent>
-            </Dialog>
-
-            <div className="grow" />
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-600">Puntuación:</span>
-              <Select value={score} onValueChange={setScore}>
-                <SelectTrigger className="w-28">
-                  <SelectValue placeholder="0–2" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="2">2</SelectItem>
-                  <SelectItem value="1">1</SelectItem>
-                  <SelectItem value="0">0</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <Textarea
-            placeholder="Notas del evaluador (opcional)"
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-          />
-
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setPhase("recall")}>Volver</Button>
-            <Button onClick={submitEvaluation} disabled={isSubmitting || score === ""}>
-              {isSubmitting ? "Guardando..." : "Guardar evaluación"}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setPhase("recall")} className={styles.outline}>Volver</Button>
+                <Button onClick={submitEvaluation} disabled={isSubmitting || score === ""} className={styles.primary}>
+                  {isSubmitting ? "Guardando…" : "Guardar evaluación"}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     )
   }
 
   // completed
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Test completado</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <p className="text-gray-700">La evaluación se ha enviado correctamente.</p>
-      </CardContent>
-    </Card>
+    <div className={`${styles.backdrop} min-h-[60vh] py-8 px-4`}>
+      <div className="mx-auto max-w-3xl">
+        <Card className={`${styles.card} shadow-xl`}>
+          <CardHeader>
+            <CardTitle className="text-slate-900">Test completado</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-slate-700">La evaluación se ha enviado correctamente.</p>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
   )
 }

@@ -23,6 +23,16 @@ const TMT_B_SEQUENCE = ["1","A","2","B","3","C","4","D","5","E","6","F"]
 
 type Phase = "instructions" | "tmt-a" | "tmt-b" | "completed"
 
+// ================== UI tokens (coherentes con el resto de subtests) ==================
+const styles = {
+  backdrop: "bg-[#0E2F3C]",
+  card: "bg-white/80 backdrop-blur border-slate-200",
+  primary: "bg-[#0E7C86] hover:bg-[#0a646c] text-white",
+  outline: "border-slate-300 text-slate-800 hover:bg-slate-50",
+  kpiLabel: "text-slate-500",
+  kpiValue: "text-slate-900",
+}
+
 export function ExecutiveFunctionSubtest(
   { onComplete, onPause, evaluationId: evaluationIdProp }: SubtestProps & { evaluationId?: string }
 ) {
@@ -110,16 +120,10 @@ export function ExecutiveFunctionSubtest(
   }
 
   const postPhase = async (payload: any) => {
-    // payload debe seguir CreateExecutiveFunctionsSubtestCommand
-    // {
-    //   numberOfItems, totalClicks, startAt, totalErrors, totalCorrect,
-    //   totalTime, type: "a"|"a+b", evaluationId, createdAt
-    // }
     await axios.post(endpoint, payload)
   }
 
   const handleNodeClick = async (clickedNode: Node) => {
-    // contar todos los clics de la fase
     setPhaseClicks(c => c + 1)
 
     const currentSequence = phase === "tmt-a" ? TMT_A_SEQUENCE : TMT_B_SEQUENCE
@@ -192,7 +196,7 @@ export function ExecutiveFunctionSubtest(
           onComplete?.({
             startTime: globalStart || new Date(),
             endTime: new Date(),
-            score: 0, // si quieres, calcula un score visual solo para la UI
+            score: 0,
             errors: tmtAErrors + bErrors,
             timeSpent,
             rawData: {
@@ -200,7 +204,7 @@ export function ExecutiveFunctionSubtest(
               tmtBTime: Math.round(phaseTimeMs / 1000),
               tmtAErrors,
               tmtBErrors: bErrors,
-              clicksA: null, // si quieres conservar, guarda phaseClicks al cerrar A en un state aparte
+              clicksA: null,
               clicksB: phaseClicks + 1,
             },
           })
@@ -221,23 +225,39 @@ export function ExecutiveFunctionSubtest(
   // ------- Render -------
   if (phase === "instructions") {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Instrucciones - TMT A / TMT A+B</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="bg-orange-50 p-6 rounded-lg">
-            <h4 className="font-semibold text-orange-900 mb-3">¿Qué debe hacer?</h4>
-            <ul className="space-y-2 text-orange-800">
-              <li>• <strong>TMT-A:</strong> Conecte los números haciendo click en orden (1→2→3...)</li>
-              <li>• <strong>TMT-A+B:</strong> Alterne número y letra (1→A→2→B→...)</li>
-              <li>• Las linias entre puntos se generan de forma automática</li>
-              <li>• Trabaje lo más rápido posible sin cometer errores</li>
-            </ul>
-          </div>
-          <Button onClick={startSubtest} className="w-full" size="lg">Comenzar</Button>
-        </CardContent>
-      </Card>
+      <div className={`min-h-[70vh] w-full ${styles.backdrop} py-8 sm:py-10 px-4`}>
+        <div className="mx-auto max-w-4xl">
+          <header className="mb-6">
+            <h1 className="text-white/90 text-2xl sm:text-3xl font-semibold tracking-tight">Funciones Ejecutivas — TMT</h1>
+            <p className="text-white/70 text-sm sm:text-base mt-1 max-w-2xl">
+              Prueba de conexión secuencial de estímulos visuales. Realice TMT-A y, a continuación, TMT-A+B.
+            </p>
+          </header>
+
+          <Card className={`${styles.card} shadow-xl`}>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg sm:text-xl lg:text-2xl text-slate-900">Instrucciones</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              <div className="rounded-lg bg-slate-50 p-4 sm:p-5 border border-slate-200">
+                <h4 className="font-semibold text-slate-900 mb-3 text-sm sm:text-base">¿Qué debe hacer?</h4>
+                <ul className="space-y-2 text-slate-700 text-sm sm:text-base">
+                  <li>• <strong>TMT-A:</strong> Conecte los números haciendo clic en orden (1→2→3…)</li>
+                  <li>• <strong>TMT-A+B:</strong> Alterne número y letra (1→A→2→B…)</li>
+                  <li>• Las líneas entre puntos se generan de forma automática.</li>
+                  <li>• Trabaje lo más rápido posible evitando errores.</li>
+                </ul>
+              </div>
+              <div className="flex justify-end gap-3">
+                {onPause && (
+                  <Button variant="outline" onClick={onPause} className={styles.outline}>Pausar</Button>
+                )}
+                <Button onClick={startSubtest} className={styles.primary} size="lg">Comenzar</Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     )
   }
 
@@ -246,85 +266,122 @@ export function ExecutiveFunctionSubtest(
     const title = isA ? "TMT-A: Conecte los números" : "TMT-A+B: Alterne números y letras"
 
     return (
-      <div className="space-y-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <span>{title}</span>
-              <div className="flex gap-2">
+      <div className={`min-h-[70vh] w-full ${styles.backdrop} py-6 px-4`}>
+        <div className="mx-auto max-w-5xl">
+          {/* Barra superior con KPIs */}
+          <Card className={`${styles.card} shadow-lg mb-3`}>
+            <CardContent className="p-3 sm:p-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className={`${styles.kpiLabel} text-xs sm:text-sm`}>Fase</p>
+                  <p className="font-semibold text-slate-900">{isA ? "TMT-A" : "TMT-A+B"}</p>
+                </div>
+                <div>
+                  <p className={`${styles.kpiLabel} text-xs sm:text-sm`}>Ítem esperado</p>
+                  <p className="font-mono text-sm sm:text-base text-slate-900">{
+                    (isA ? TMT_A_SEQUENCE : TMT_B_SEQUENCE)[currentSequenceIndex] ?? "—"
+                  }</p>
+                </div>
+                <div>
+                  <p className={`${styles.kpiLabel} text-xs sm:text-sm`}>Errores</p>
+                  <p className={`font-semibold ${errors > 0 ? "text-rose-600" : styles.kpiValue}`}>{errors}</p>
+                </div>
+                <div>
+                  <p className={`${styles.kpiLabel} text-xs sm:text-sm`}>Correcciones</p>
+                  <p className={styles.kpiValue}>{corrections}</p>
+                </div>
+                <div className="ml-auto">
+                  {onPause && (
+                    <Button variant="outline" onClick={onPause} className={styles.outline}>Pausar</Button>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className={`${styles.card} shadow-xl`}>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between text-slate-900">
+                <span>{title}</span>
                 <Badge variant={errors > 0 ? "destructive" : "secondary"}>Errores: {errors}</Badge>
-              </div>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="relative bg-gray-50 rounded-lg" style={{ height: "500px", width: "600px" }}>
-              <svg width="600" height="500" className="absolute inset-0">
-                {/* líneas entre nodos ya conectados */}
-                {nodes.map((node, index) => {
-                  if (node.isConnected && index < nodes.length - 1) {
-                    const next = nodes.find(n => n.order === node.order + 1 && n.isConnected)
-                    if (next) {
-                      return (
-                        <line
-                          key={`line-${node.id}`}
-                          x1={node.x + 25} y1={node.y + 25}
-                          x2={next.x + 25} y2={next.y + 25}
-                          stroke="#3B82F6" strokeWidth="2"
-                        />
-                      )
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="relative mx-auto rounded-lg bg-slate-50 border border-slate-200 shadow-sm" style={{ height: "500px", width: "600px" }}>
+                <svg width="600" height="500" className="absolute inset-0">
+                  {/* líneas entre nodos ya conectados */}
+                  {nodes.map((node, index) => {
+                    if (node.isConnected && index < nodes.length - 1) {
+                      const next = nodes.find(n => n.order === node.order + 1 && n.isConnected)
+                      if (next) {
+                        return (
+                          <line
+                            key={`line-${node.id}`}
+                            x1={node.x + 25} y1={node.y + 25}
+                            x2={next.x + 25} y2={next.y + 25}
+                            stroke="#0E7C86" strokeWidth="3" strokeLinecap="round"
+                          />
+                        )
+                      }
                     }
-                  }
-                  return null
-                })}
+                    return null
+                  })}
 
-                {/* nodos */}
-                {nodes.map(node => (
-                  <g key={node.id}>
-                    <circle
-                      cx={node.x + 25} cy={node.y + 25} r="25"
-                      fill={node.isConnected ? "#10B981" : "#E5E7EB"}
-                      stroke="#6B7280" strokeWidth="2"
-                      className="cursor-pointer hover:opacity-80"
-                      onClick={() => handleNodeClick(node)}
-                    />
-                    <text
-                      x={node.x + 25} y={node.y + 30}
-                      textAnchor="middle"
-                      className="text-sm font-bold pointer-events-none select-none"
-                      fill={node.isConnected ? "white" : "black"}
-                    >
-                      {node.value}
-                    </text>
-                  </g>
-                ))}
-              </svg>
-            </div>
-
-            <div className="flex justify-between items-center mt-4">
-              <div className="text-sm text-gray-600">Fase: {isA ? "TMT-A" : "TMT-A+B"}</div>
-              <div className="flex gap-4">
-                <Button variant="outline" onClick={onPause}>Pausar</Button>
+                  {/* nodos */}
+                  {nodes.map(node => (
+                    <g key={node.id}>
+                      <circle
+                        cx={node.x + 25} cy={node.y + 25} r="25"
+                        fill={node.isConnected ? "#10B981" : "#E5E7EB"}
+                        stroke="#6B7280" strokeWidth="2"
+                        className="cursor-pointer hover:opacity-90 transition"
+                        onClick={() => handleNodeClick(node)}
+                      />
+                      <text
+                        x={node.x + 25} y={node.y + 30}
+                        textAnchor="middle"
+                        className="text-sm font-bold pointer-events-none select-none"
+                        fill={node.isConnected ? "white" : "#0f172a"}
+                      >
+                        {node.value}
+                      </text>
+                    </g>
+                  ))}
+                </svg>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+
+              <div className="flex justify-between items-center mt-4">
+                <div className="text-sm text-slate-600">Fase: {isA ? "TMT-A" : "TMT-A+B"}</div>
+                <div className="flex gap-3">
+                  {onPause && (
+                    <Button variant="outline" onClick={onPause} className={styles.outline}>Pausar</Button>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     )
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Funciones Ejecutivas (TMT) Completado</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="bg-orange-50 p-4 rounded-lg text-sm grid grid-cols-2 gap-4">
-          <div><strong>TMT-A tiempo:</strong> {Math.round(tmtATime / 1000)}s</div>
-          <div><strong>TMT-A errores:</strong> {tmtAErrors}</div>
-          <div><strong>TMT-A+B tiempo:</strong> {Math.round(tmtBTime / 1000)}s</div>
-          <div><strong>TMT-A+B errores:</strong> {tmtBErrors}</div>
-        </div>
-      </CardContent>
-    </Card>
+    <div className={`${styles.backdrop} min-h-[60vh] py-8 px-4`}>
+      <div className="mx-auto max-w-4xl">
+        <Card className={`${styles.card} shadow-xl`}>
+          <CardHeader>
+            <CardTitle className="text-slate-900">Funciones Ejecutivas (TMT) — Completado</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 text-sm grid grid-cols-1 sm:grid-cols-2 gap-4 text-slate-800">
+              <div><strong>TMT-A tiempo:</strong> {Math.round(tmtATime / 1000)}s</div>
+              <div><strong>TMT-A errores:</strong> {tmtAErrors}</div>
+              <div><strong>TMT-A+B tiempo:</strong> {Math.round(tmtBTime / 1000)}s</div>
+              <div><strong>TMT-A+B errores:</strong> {tmtBErrors}</div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
   )
 }
