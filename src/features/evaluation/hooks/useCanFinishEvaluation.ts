@@ -1,12 +1,12 @@
 "use client"
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { canFinishEvaluation } from "../api/canFinishEvaluation";
 
 export const  useCanFinishEvaluation= () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<any>(null);
 
-    const canFinish = async (evaluationId: string, specialistId: string) => {
+    const canFinish = useCallback(async (evaluationId: string, specialistId: string) => {
         setLoading(true);
         try{
             const canFinish = await canFinishEvaluation(evaluationId, specialistId);
@@ -17,6 +17,6 @@ export const  useCanFinishEvaluation= () => {
          }finally{
             setLoading(false);
         }
-    }
+    },[])
    return { canFinish, canFinishLoading: loading, canFinishError: error }
 }

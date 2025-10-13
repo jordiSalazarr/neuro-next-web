@@ -91,7 +91,7 @@ export default function FinishTestPage() {
       setDone(true)
       // Reset local store para evitar fugas de datos en nueva sesión
       try { resetEvaluation() } catch {}
-      router.push('/test-overview')
+      router.push( `/evaluations/${currentEvaluation.id}`)
     } catch (e: any) {
       setError(e?.response?.data?.message || e?.message || 'Error al finalizar la evaluación')
     } finally {
