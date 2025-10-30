@@ -16,12 +16,6 @@ export const WORD_LIST = [
   "caballo",
   "camello",
   "serpiente",
-  // "chaqueta",
-  // "falda",
-  // "perro",
-  // "gato",
-  // "vaca",
-  // "caballo",
 ];
 
 interface SubtestProps {
@@ -29,16 +23,9 @@ interface SubtestProps {
   onPause?: () => void;
 }
 
-/**
- * VerbalMemorySubtest — Rediseño UI/UX corporativo clínico
- * - Mantiene la lógica y el contrato API originales.
- * - Mejora: tonos corporativos (evitando blanco puro), jerarquía tipográfica,
- *   cabecera sticky con estado, botones de acción claros y copy profesional.
- */
-
-// Tokens de estilo corporativo (coherentes con el resto de subtests)
+// Tokens de estilo corporativo
 const styles = {
-  backdrop: "bg-[#0E2F3C]", // azul hospital corporativo oscuro
+  backdrop: "bg-[#0E2F3C]",
   card: "bg-white/80 backdrop-blur border-slate-200",
   surface: "bg-slate-50/60",
   primary: "bg-[#0E7C86] hover:bg-[#0a646c] text-white",
@@ -56,74 +43,31 @@ export function VerbalMemorySubtest({ onComplete, onPause }: SubtestProps) {
   const [startAt, setStartAt] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const postedRef = useRef(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const evaluationId = useEvaluationStore((s) => s.currentEvaluation?.id);
 
-  // ---- TTS state/refs ----
-  const voicesRef = useRef<SpeechSynthesisVoice[] | null>(null);
-  const cancelingRef = useRef(false);
-
-  const hasSpeech =
-    typeof window !== "undefined" && typeof window.speechSynthesis !== "undefined";
-
-  // Carga las voces (algunos navegadores tardan en exponerlas).
+  // Carga el audio humano desde /public/audio/
   useEffect(() => {
-    if (!hasSpeech) return;
-    const load = () => {
-      const v = window.speechSynthesis.getVoices();
-      if (v && v.length) voicesRef.current = v;
-    };
-    load();
-    window.speechSynthesis.addEventListener?.("voiceschanged", load);
-    return () => {
-      window.speechSynthesis.removeEventListener?.("voiceschanged", load);
-    };
-  }, [hasSpeech]);
-
-  // Cancela cualquier síntesis si se desmonta o se cambia de fase
-  useEffect(() => {
-    return () => {
-      if (hasSpeech) {
-        cancelingRef.current = true;
-        window.speechSynthesis.cancel();
-        cancelingRef.current = false;
-      }
-    };
-  }, [hasSpeech]);
-
-  const pickVoice = (): SpeechSynthesisVoice | undefined => {
-    const voices = voicesRef.current || window.speechSynthesis.getVoices();
-    if (!voices || voices.length === 0) return undefined;
-    // Preferencias: es-ES / es- / latam, luego cualquier cosa
-    const prefer = (pred: (v: SpeechSynthesisVoice) => boolean) =>
-      voices.find(pred);
-    return (
-      prefer((v) => /^(es-ES|es-419|es-MX|es-AR|es-CO|es)/i.test(v.lang)) ||
-      prefer((v) => /spanish/i.test(v.name)) ||
-      voices[0]
-    );
-  };
-
-  const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-
-  const speakOnce = (text: string, opts?: Partial<SpeechSynthesisUtterance>) =>
-    new Promise<void>((resolve, reject) => {
-      if (!hasSpeech) return reject(new Error("speechSynthesis no soportado"));
-      const u = new SpeechSynthesisUtterance(text);
-      const voice = pickVoice();
-      if (voice) u.voice = voice;
-      u.lang = voice?.lang || "es-ES";
-      u.rate = opts?.rate ?? 0.95; // un poco más lento mejora comprensión
-      u.pitch = opts?.pitch ?? 1.0;
-      u.volume = opts?.volume ?? 1.0;
-
-      u.onend = () => resolve();
-      u.onerror = (e) => reject(e.error || new Error("TTS error"));
-      try {
-        window.speechSynthesis.cancel(); // iOS: limpiar cola
-      } catch {}
-      window.speechSynthesis.speak(u);
+    const audio = new Audio("/audio/memory_test_audio.m4a");
+    audioRef.current = audio;
+    audio.preload = "auto";
+    // Pasar a la fase de recuerdo al finalizar el audio
+    audio.addEventListener("ended", () => {
+      setPhase("recall");
+      setIsPlaying(false);
     });
+    // audio.addEventListener("error", (err) => {
+    //   console.error("Error cargando audio:", err);
+    //   alert("No se pudo cargar el audio. Verifica la ruta de audio");
+    //   setIsPlaying(false);
+    // });
+
+    return () => {
+      audio.pause();
+      audio.src = "";
+    };
+  }, []);
 
   const begin = () => {
     setPhase("listening");
@@ -131,38 +75,14 @@ export function VerbalMemorySubtest({ onComplete, onPause }: SubtestProps) {
   };
 
   const playListOnce = async () => {
-    if (isPlaying) return;
+    if (isPlaying || !audioRef.current) return;
     setIsPlaying(true);
 
-    if (!hasSpeech) {
-      setIsPlaying(false);
-      alert(
-        "Tu navegador no soporta síntesis de voz. Prueba Chrome/Edge/Safari actualizados o activa el permiso de voz."
-      );
-      return;
-    }
-
     try {
-      await speakOnce("A continuación escucharás una lista de palabras. Presta atención.");
-      await sleep(250);
-
-      for (let i = 0; i < WORD_LIST.length; i++) {
-        const word = WORD_LIST[i];
-        await speakOnce(word, { rate: 0.95 });
-        if (i < WORD_LIST.length - 1) await sleep(250);
-        if (cancelingRef.current) throw new Error("cancelled");
-      }
-
-      await sleep(200);
-      setPhase("recall");
-    } catch (e: any) {
-      if (e?.message !== "cancelled") {
-        console.error("TTS error:", e);
-        alert(
-          "No se pudo reproducir la lista por voz. Verifica permisos de sonido/voz en el navegador."
-        );
-      }
-    } finally {
+      await audioRef.current.play();
+    } catch (err) {
+      console.error(err);
+      alert("No se pudo reproducir el audio. Verifica que el usuario haya interactuado antes (click).");
       setIsPlaying(false);
     }
   };
@@ -181,7 +101,6 @@ export function VerbalMemorySubtest({ onComplete, onPause }: SubtestProps) {
     if (postedRef.current) return;
 
     const recalled = parseRecall(recallText);
-
     setIsSubmitting(true);
     postedRef.current = true;
 
@@ -224,7 +143,7 @@ export function VerbalMemorySubtest({ onComplete, onPause }: SubtestProps) {
               Memoria Verbal
             </h1>
             <p className="text-white/70 text-sm sm:text-base mt-1 max-w-2xl">
-              Escucharás una lista única de palabras y, a continuación, escribirás todas las que recuerdes.
+              Escucharás una lista única de palabras grabadas con voz humana y, a continuación, escribirás todas las que recuerdes.
             </p>
           </header>
 
@@ -237,13 +156,14 @@ export function VerbalMemorySubtest({ onComplete, onPause }: SubtestProps) {
             <CardContent className="space-y-5">
               <div className="rounded-lg bg-slate-50 p-4 sm:p-5 border border-slate-200">
                 <p className="text-slate-700 text-sm sm:text-base">
-                  Se presentará <strong>una sola lista</strong> de <strong>{WORD_LIST.length} palabras</strong> mediante voz.
+                  Se reproducirá una grabación de audio con <strong>{WORD_LIST.length} palabras</strong>.
                   Después, anote todas las palabras que recuerde —<em>en cualquier orden</em>— separándolas por espacios o comas.
                 </p>
               </div>
               <div className={`${styles.warn} rounded-lg p-3 sm:p-4`}>
-                <p className="text-sm sm:text-base"><strong>Importante:</strong> asegúrese de tener el sonido activado.
-                En iOS, inicie la reproducción tras tocar el botón para permitir el audio.</p>
+                <p className="text-sm sm:text-base">
+                  <strong>Importante:</strong> asegúrese de tener el sonido activado. En iOS, debe tocar el botón de reproducción para iniciar el audio.
+                </p>
               </div>
               <div className="flex gap-2">
                 <Badge variant="outline">Lista única</Badge>
@@ -274,17 +194,16 @@ export function VerbalMemorySubtest({ onComplete, onPause }: SubtestProps) {
                 <Badge variant="outline">Presentación</Badge>
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="text-center">
-                <Button onClick={playListOnce} disabled={isPlaying} size="lg" className={`${styles.primary} mb-2`}>
-                  <Volume2 className="w-5 h-5 mr-2" /> {isPlaying ? "Reproduciendo…" : "Reproducir lista"}
-                </Button>
-                {!hasSpeech && (
-                  <p className="text-xs text-rose-600 mt-2">
-                    Tu navegador no soporta síntesis de voz.
-                  </p>
-                )}
-              </div>
+            <CardContent className="text-center">
+              <Button
+                onClick={playListOnce}
+                disabled={isPlaying}
+                size="lg"
+                className={`${styles.primary} mb-2`}
+              >
+                <Volume2 className="w-5 h-5 mr-2" />{" "}
+                {isPlaying ? "Reproduciendo…" : "Reproducir lista"}
+              </Button>
             </CardContent>
           </Card>
         </div>
@@ -296,23 +215,24 @@ export function VerbalMemorySubtest({ onComplete, onPause }: SubtestProps) {
     return (
       <div className={`min-h-[70vh] w-full ${styles.backdrop} py-8 px-4`}>
         <div className="mx-auto max-w-4xl">
-          {/* Cabecera sticky con estado */}
           <div className="sticky top-0 z-20 mb-3">
             <Card className={`${styles.card} shadow-lg`}>
-              <CardContent className="p-3 sm:p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className={`${styles.kpiLabel} text-xs sm:text-sm`}>Fase</p>
-                    <p className="font-semibold text-slate-900">Recuerdo inmediato</p>
-                  </div>
-                  <div className="flex gap-2">
-                    {onPause && (
-                      <Button variant="outline" onClick={onPause} className={styles.outline}>Pausar</Button>
-                    )}
-                    <Button onClick={finishAndPost} disabled={isSubmitting || recallText.trim().length === 0} className={styles.primary}>
-                      {isSubmitting ? "Guardando…" : "Finalizar subtest"}
-                    </Button>
-                  </div>
+              <CardContent className="p-3 sm:p-4 flex items-center justify-between">
+                <div>
+                  <p className={`${styles.kpiLabel} text-xs sm:text-sm`}>Fase</p>
+                  <p className="font-semibold text-slate-900">Recuerdo inmediato</p>
+                </div>
+                <div className="flex gap-2">
+                  {onPause && (
+                    <Button variant="outline" onClick={onPause} className={styles.outline}>Pausar</Button>
+                  )}
+                  <Button
+                    onClick={finishAndPost}
+                    disabled={isSubmitting || recallText.trim().length === 0}
+                    className={styles.primary}
+                  >
+                    {isSubmitting ? "Guardando…" : "Finalizar subtest"}
+                  </Button>
                 </div>
               </CardContent>
             </Card>
@@ -337,11 +257,20 @@ export function VerbalMemorySubtest({ onComplete, onPause }: SubtestProps) {
               />
               <div className="flex justify-end gap-2">
                 {onPause && (
-                  <Button variant="outline" onClick={onPause} disabled={isSubmitting} className={styles.outline}>
+                  <Button
+                    variant="outline"
+                    onClick={onPause}
+                    disabled={isSubmitting}
+                    className={styles.outline}
+                  >
                     Pausar
                   </Button>
                 )}
-                <Button onClick={finishAndPost} disabled={isSubmitting || recallText.trim().length === 0} className={styles.primary}>
+                <Button
+                  onClick={finishAndPost}
+                  disabled={isSubmitting || recallText.trim().length === 0}
+                  className={styles.primary}
+                >
                   {isSubmitting ? "Guardando…" : "Finalizar subtest"}
                 </Button>
               </div>
