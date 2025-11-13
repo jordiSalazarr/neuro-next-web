@@ -1,93 +1,92 @@
-"use client"
+"use client";
 
-import { useEffect, useRef, useState } from "react"
-import Link from "next/link"
-import { useRouter } from "next/navigation"
-import { motion } from "framer-motion"
+import { useEffect, useRef, useState, FormEvent } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { motion } from "framer-motion";
 
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Separator } from "@/components/ui/separator"
-import { Badge } from "@/components/ui/badge"
-import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
-import { ClipboardList, User2, Mail, LogOut, ShieldCheck, CalendarClock, Loader2 } from "lucide-react"
+import { ClipboardList, User2, Mail, LogOut, ShieldCheck, CalendarClock, Loader2 } from "lucide-react";
 
-import { useApp } from "@/contexts/AppContext"
-import type { Patient, TestSession } from "@/types"
-import { useAuthStore } from "@/src/stores/auth"
-import { useEvaluationStore } from "@/src/stores/evaluation"
-import { useRegisterUser } from "@/src/features/auth/hooks/useRegisterUser"
-import { useCreateEvaluation } from "@/src/features/evaluation/hooks/useCreateEvaluation"
+import { useApp } from "@/contexts/AppContext";
+import type { Patient, TestSession } from "@/types";
+import { useAuthStore } from "@/src/stores/auth";
+import { useEvaluationStore } from "@/src/stores/evaluation";
+import { useRegisterUser } from "@/src/features/auth/hooks/useRegisterUser";
+import { useCreateEvaluation } from "@/src/features/evaluation/hooks/useCreateEvaluation";
 
-// ================== Tokens de estilo corporativo ==================
+// ================ Tokens UI ================
 const styles = {
-  backdrop: "bg-[#0E2F3C]", // azul hospital
-  card: "bg-white/80 backdrop-blur border-slate-200",
-  primary: "bg-[#0E7C86] hover:bg-[#0a646c] text-white",
+  shell: "min-h-[calc(100vh-56px)]",
+  card: "bg-white/85 backdrop-blur border border-slate-200/70 shadow-xl rounded-2xl",
+  primary: "bg-brand-600 hover:bg-slate-900 text-white",
   outline: "border-slate-300 text-slate-800 hover:bg-slate-50",
-}
+};
 
 export default function PatientSelectionScreen() {
-  const { register, loading, error } = useRegisterUser()
-  const { create, createLoading, createError } = useCreateEvaluation()
+  const { register, loading, error } = useRegisterUser();
+  const { create, createLoading, createError } = useCreateEvaluation();
 
-  const { state, dispatch } = useApp()
-  const [patientName, setPatientName] = useState("")
-  const [patientAge, setPatientAge] = useState<number | "">("")
-  const [isFormValid, setIsFormValid] = useState(false)
-  const didRegisterRef = useRef(false)
+  const { state, dispatch } = useApp();
+  const [patientName, setPatientName] = useState("");
+  const [patientAge, setPatientAge] = useState<number | "">("");
+  const [isFormValid, setIsFormValid] = useState(false);
+  const didRegisterRef = useRef(false);
 
-  const user = useAuthStore((s) => s.user)
-  const setCurrentEvaluation = useEvaluationStore((s) => s.setCurrentEvaluation)
-  const router = useRouter()
+  const user = useAuthStore((s) => s.user);
+  const setCurrentEvaluation = useEvaluationStore((s) => s.setCurrentEvaluation);
+  const router = useRouter();
 
-  // Registro silencioso del especialista (si procede)
-useEffect(() => {
-  if (!user?.email) return
-  if (didRegisterRef.current) return             // evita re-ejecutar
-  didRegisterRef.current = true
+  // Registro silencioso del especialista
+  useEffect(() => {
+    if (!user?.email) return;
+    if (didRegisterRef.current) return;
+    didRegisterRef.current = true;
+    (async () => {
+      try {
+        await register(user.name ?? "", user.email, user.roles ?? []);
+      } catch {
+        didRegisterRef.current = false;
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.email]);
 
-  ;(async () => {
-    try {
-      await register(user.name ?? "", user.email, user.roles ?? [])
-    } catch {
-      // si quieres reintentar en caso de error puntual, vuelve a abrir la puerta:
-      didRegisterRef.current = false
-    }
-  })()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-}, [user?.email])
   // Validación simple
   const validateForm = (name: string, ageVal: number | "") => {
-    const age = typeof ageVal === "number" ? ageVal : Number(ageVal)
-    const ok = name.trim().length > 0 && !Number.isNaN(age) && age >= 16 && age <= 120
-    setIsFormValid(ok)
-  }
+    const age = typeof ageVal === "number" ? ageVal : Number(ageVal);
+    const ok = name.trim().length > 1 && !Number.isNaN(age) && age >= 16 && age <= 120;
+    setIsFormValid(ok);
+  };
 
   const handleNameChange = (value: string) => {
-    setPatientName(value)
-    validateForm(value, patientAge)
-  }
+    setPatientName(value);
+    validateForm(value, patientAge);
+  };
 
   const handleAgeChange = (value: string) => {
-    const n = value === "" ? "" : Math.max(0, Math.min(120, Number(value)))
-    setPatientAge(n as any)
-    validateForm(patientName, n as number)
-  }
+    const n = value === "" ? "" : Math.max(0, Math.min(120, Number(value)));
+    setPatientAge(n as any);
+    validateForm(patientName, n as number);
+  };
 
   async function createNewEvaluation() {
-    const name = patientName.trim()
-    const age = typeof patientAge === "number" ? patientAge : Number(patientAge)
-    const ev = await create(name, age)
-    setCurrentEvaluation(ev || null)
-    router.push("/test-runner")
+    const name = patientName.trim();
+    const age = typeof patientAge === "number" ? patientAge : Number(patientAge);
+    const ev = await create(name, age);
+    setCurrentEvaluation(ev || null);
+    router.push("/test-runner");
   }
 
   const handleStartSession = async () => {
-    if (!isFormValid || createLoading) return
+    if (!isFormValid || createLoading) return;
     try {
       const newPatient: Patient = {
         id: `patient-${Date.now()}`,
@@ -95,7 +94,7 @@ useEffect(() => {
         age: Number(patientAge),
         gender: "M",
         education: 12,
-      }
+      };
 
       const newSession: TestSession = {
         id: `session-${Date.now()}`,
@@ -104,37 +103,45 @@ useEffect(() => {
         currentSubtest: 0,
         subtestResults: [],
         status: "in-progress",
-      }
+      };
 
-      dispatch({ type: "SELECT_PATIENT", payload: newPatient })
-      dispatch({ type: "START_SESSION", payload: newSession })
-      await createNewEvaluation()
+      dispatch({ type: "SELECT_PATIENT", payload: newPatient });
+      dispatch({ type: "START_SESSION", payload: newSession });
+      await createNewEvaluation();
     } catch (e) {
-      // Silencio de errores aquí; mostramos createError más abajo
-      console.error(e)
+      console.error(e);
     }
-  }
+  };
+
+  const handleSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    handleStartSession();
+  };
 
   const handleLogout = () => {
-    dispatch({ type: "LOGOUT" })
-  }
+    dispatch({ type: "LOGOUT" });
+  };
 
-  // Estados de error globales (registro/evaluación)
-  const hasAnyError = Boolean(error || createError)
-  const anyErrorText = (error as string) || (createError as string) || ""
+  const hasAnyError = Boolean(error || createError);
+  const anyErrorText = (error as string) || (createError as string) || "";
+
+  const nameInvalid = patientName.trim().length > 0 && patientName.trim().length < 2;
+  const ageInvalid =
+    patientAge !== "" &&
+    (Number.isNaN(Number(patientAge)) || Number(patientAge) < 16 || Number(patientAge) > 120);
 
   return (
-    <div className={`${styles.backdrop} min-h-screen`}>      
-      <div className="mx-auto max-w-5xl px-4 py-8 sm:py-10">
+    <main className={styles.shell}>
+      <section className="mx-auto max-w-5xl px-4 py-8 sm:py-10">
         {/* Header compacto */}
         <div className="mb-6 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#0E7C86] text-white shadow-sm">
-              <ClipboardList className="h-5 w-5" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-600 text-white shadow-sm">
+              <ClipboardList className="h-5 w-5" aria-hidden="true" />
             </div>
             <div>
-              <h1 className="text-white/90 text-xl font-semibold leading-tight">Nueva evaluación</h1>
-              <p className="text-[11px] text-white/70">Registro del paciente y preparación</p>
+              <h1 className="text-slate-900 text-xl font-semibold leading-tight">Nueva evaluación</h1>
+              <p className="text-[11px] text-slate-600">Datos mínimos para iniciar</p>
             </div>
           </div>
 
@@ -143,7 +150,13 @@ useEffect(() => {
               <User2 className="h-3.5 w-3.5" />
               {user?.name || "Especialista"}
             </Badge>
-            <Button variant="outline" size="sm" onClick={handleLogout} className={styles.outline + " gap-2 bg-white/80"}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleLogout}
+              className={styles.outline + " gap-2"}
+              aria-label="Cerrar sesión"
+            >
               <LogOut className="h-4 w-4" /> Cerrar sesión
             </Button>
           </div>
@@ -151,107 +164,115 @@ useEffect(() => {
 
         {/* Paso / Progreso contextual */}
         <div className="mb-6 flex flex-wrap items-center gap-2 text-xs">
-          <Badge className="bg-[#0E7C86] text-white">Paso 1</Badge>
-          <span className="text-white/80">Datos del especialista y del paciente</span>
-          <Separator orientation="vertical" className="mx-2 h-4 bg-white/20" />
-          <div className="flex items-center gap-1 text-white/80">
-            <CalendarClock className="h-3.5 w-3.5" /> Duración estimada 45–60 min
+          <Badge className="bg-brand-600 text-white">Paso 1</Badge>
+          <span className="text-slate-700">Especialista y paciente</span>
+          <Separator orientation="vertical" className="mx-2 h-4 bg-slate-200" />
+          <div className="flex items-center gap-1 text-slate-700">
+            <CalendarClock className="h-3.5 w-3.5" aria-hidden="true" /> 45–60 min
           </div>
         </div>
 
         {/* Contenido principal */}
-        <div className="grid gap-6 lg:grid-cols-2">
-          {/* Tarjeta Especialista */}
-          <Card className={`${styles.card} shadow-sm`}>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-slate-900 text-base">Datos del especialista</CardTitle>
-              <CardDescription>Verifique su identidad antes de continuar</CardDescription>
-            </CardHeader>
-            <CardContent className="grid gap-3 sm:grid-cols-2">
-              <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
-                <div className="mb-1 flex items-center gap-2 text-sm font-medium text-slate-800">
-                  <User2 className="h-4 w-4 text-[#0E7C86]" /> Nombre
-                </div>
-                <div className="text-sm text-slate-800">{user?.name || "—"}</div>
-              </div>
-              <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
-                <div className="mb-1 flex items-center gap-2 text-sm font-medium text-slate-800">
-                  <Mail className="h-4 w-4 text-[#0E7C86]" /> Email
-                </div>
-                <div className="text-sm text-slate-800">{user?.email || "—"}</div>
-              </div>
-            </CardContent>
-          </Card>
-
+        <div className="grid gap-6 md:grid-cols-1">
+       
           {/* Tarjeta Paciente */}
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}>
-            <Card className={`${styles.card} shadow-sm`}>
+            <Card className={styles.card}>
               <CardHeader className="pb-2">
-                <CardTitle className="text-slate-900 text-base">Información del paciente</CardTitle>
-                <CardDescription>Complete los datos para iniciar la evaluación</CardDescription>
+                <CardTitle className="text-slate-900 text-base">Paciente</CardTitle>
+                <CardDescription>Complete los datos mínimos</CardDescription>
               </CardHeader>
 
-              <CardContent className="space-y-5">
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="patient-name">Nombre del paciente</Label>
-                    <Input
-                      id="patient-name"
-                      type="text"
-                      placeholder="Nombre y apellidos"
-                      value={patientName}
-                      onChange={(e) => handleNameChange(e.target.value)}
-                      className="h-11"
-                      aria-required="true"
-                    />
-                    <p className="text-xs text-slate-500">Introduzca un nombre válido.</p>
+              <CardContent>
+                <form className="space-y-5" onSubmit={handleSubmit} noValidate>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    {/* Nombre */}
+                    <div className="space-y-2">
+                      <Label htmlFor="patient-name">Nombre y apellidos</Label>
+                      <Input
+                        id="patient-name"
+                        type="text"
+                        placeholder="p. ej., Jordi Salazar"
+                        value={patientName}
+                        onChange={(e) => handleNameChange(e.target.value)}
+                        className="h-11"
+                        aria-required="true"
+                        aria-invalid={nameInvalid}
+                        aria-describedby={nameInvalid ? "name-error" : undefined}
+                        autoComplete="name"
+                        inputMode="text"
+                      />
+                      {nameInvalid && (
+                        <p id="name-error" className="text-xs text-rose-700">
+                          Introduce al menos 2 caracteres.
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Edad */}
+                    <div className="space-y-2">
+                      <Label htmlFor="patient-age">Edad</Label>
+                      <Input
+                        id="patient-age"
+                        type="number"
+                        placeholder="Años"
+                        value={patientAge}
+                        onChange={(e) => handleAgeChange(e.target.value)}
+                        min={16}
+                        max={120}
+                        className="h-11"
+                        aria-required="true"
+                        aria-invalid={ageInvalid}
+                        aria-describedby={ageInvalid ? "age-error" : "age-hint"}
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                      />
+                      <p id="age-hint" className="text-xs text-slate-500">
+                        Mínimo 16 años.
+                      </p>
+                      {ageInvalid && (
+                        <p id="age-error" className="text-xs text-rose-700">
+                          Edad entre 16 y 120.
+                        </p>
+                      )}
+                    </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="patient-age">Edad</Label>
-                    <Input
-                      id="patient-age"
-                      type="number"
-                      placeholder="Años"
-                      value={patientAge}
-                      onChange={(e) => handleAgeChange(e.target.value)}
-                      min={16}
-                      max={120}
-                      className="h-11"
-                      aria-required="true"
-                    />
-                    <p className="text-xs text-slate-500">Mínimo 16 años para esta batería.</p>
+                  {/* Cumplimiento / seguridad */}
+                  <Alert className="border-slate-200 bg-slate-50 text-slate-800">
+                    <ShieldCheck className="h-4 w-4 text-brand-600" aria-hidden="true" />
+                    <AlertDescription className="text-xs">
+                      Procesamiento conforme a buenas prácticas clínicas. Almacenamiento seguro.
+                    </AlertDescription>
+                  </Alert>
+
+                  {/* CTA */}
+                  <div className="flex items-center justify-end gap-3">
+                    <Button
+                      type="submit"
+                      onClick={handleStartSession}
+                      disabled={!isFormValid || createLoading}
+                      className={`${styles.primary} h-11 min-w-[200px]`}
+                    >
+                      {createLoading ? (
+                        <span className="inline-flex items-center gap-2">
+                          <Loader2 className="h-4 w-4 animate-spin" /> Creando evaluación…
+                        </span>
+                      ) : (
+                        "Iniciar evaluación"
+                      )}
+                    </Button>
                   </div>
-                </div>
 
-                {/* Aviso de cumplimiento / seguridad */}
-                <Alert className="border-slate-200 bg-slate-50 text-slate-800">
-                  <ShieldCheck className="h-4 w-4 text-[#0E7C86]" />
-                  <AlertDescription className="text-xs">
-                    La información se procesa de acuerdo con buenas prácticas clínicas y se almacena de forma segura.
-                  </AlertDescription>
-                </Alert>
-
-                {/* CTA contextual */}
-                <div className="flex items-center justify-end gap-3">
-                  <Button
-                    onClick={handleStartSession}
-                    disabled={!isFormValid || createLoading}
-                    className={`${styles.primary} h-11 min-w-[200px]`}
-                  >
-                    {createLoading ? (
-                      <span className="inline-flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin"/> Creando evaluación…</span>
-                    ) : (
-                      "Iniciar evaluación"
-                    )}
-                  </Button>
-                </div>
-
-                {hasAnyError && (
-                  <div className="rounded-md border border-rose-300 bg-rose-50 text-rose-700 px-3 py-2 text-sm">
-                    {anyErrorText}
-                  </div>
-                )}
+                  {hasAnyError && (
+                    <div
+                      role="alert"
+                      className="rounded-md border border-rose-300 bg-rose-50 text-rose-700 px-3 py-2 text-sm"
+                    >
+                      {anyErrorText}
+                    </div>
+                  )}
+                </form>
               </CardContent>
             </Card>
           </motion.div>
@@ -259,16 +280,16 @@ useEffect(() => {
 
         {/* Pie de confianza */}
         <div className="mt-8">
-          <Card className={`${styles.card} shadow-sm`}>
+          <Card className={styles.card}>
             <CardContent className="p-4 text-xs">
               <div className="flex items-center gap-2 text-slate-700">
-                <ShieldCheck className="h-4 w-4 text-[#0E7C86]" />
-                <p>Datos cifrados en tránsito y en reposo. Acceso controlado por roles. Registro de actividad para auditoría.</p>
+                <ShieldCheck className="h-4 w-4 text-brand-600" aria-hidden="true" />
+                <p>Datos cifrados en tránsito y reposo · Acceso por roles · Auditoría completa</p>
               </div>
             </CardContent>
           </Card>
         </div>
-      </div>
-    </div>
-  )
+      </section>
+    </main>
+  );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -9,29 +9,21 @@ import { Volume2, CheckCircle2 } from "lucide-react";
 import axios from "axios";
 import { useEvaluationStore } from "@/src/stores/evaluation";
 
-export const WORD_LIST = [
-  "gato",
-  "perro",
-  "vaca",
-  "caballo",
-  "camello",
-  "serpiente",
-];
+export const WORD_LIST = ["gato", "perro", "vaca", "caballo", "camello", "serpiente"];
 
 interface SubtestProps {
   onComplete?: (result: any) => void;
   onPause?: () => void;
 }
 
-// Tokens de estilo corporativo
+// Tokens visuales (alineados con el resto de pantallas)
 const styles = {
-  backdrop: "bg-[#0E2F3C]",
-  card: "bg-white/80 backdrop-blur border-slate-200",
-  surface: "bg-slate-50/60",
-  primary: "bg-[#0E7C86] hover:bg-[#0a646c] text-white",
+  shell: "min-h-[calc(100vh-56px)]",
+  card:
+    "bg-white/85 backdrop-blur border border-slate-200/70 shadow-xl rounded-2xl",
+  primary: "bg-brand-600 hover:bg-slate-900 text-white",
   outline: "border-slate-300 text-slate-800 hover:bg-slate-50",
   kpiLabel: "text-slate-500",
-  kpiValue: "text-slate-900",
   warn: "bg-amber-50 border border-amber-200 text-amber-900",
 };
 
@@ -44,30 +36,31 @@ export function VerbalMemorySubtest({ onComplete, onPause }: SubtestProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const postedRef = useRef(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   const evaluationId = useEvaluationStore((s) => s.currentEvaluation?.id);
 
-  // Carga el audio humano desde /public/audio/
+  // Carga audio (voz humana en /public/audio/)
   useEffect(() => {
     const audio = new Audio("/audio/memory_test_audio.m4a");
     audioRef.current = audio;
     audio.preload = "auto";
-    // Pasar a la fase de recuerdo al finalizar el audio
     audio.addEventListener("ended", () => {
       setPhase("recall");
       setIsPlaying(false);
     });
-    // audio.addEventListener("error", (err) => {
-    //   console.error("Error cargando audio:", err);
-    //   alert("No se pudo cargar el audio. Verifica la ruta de audio");
-    //   setIsPlaying(false);
-    // });
-
     return () => {
       audio.pause();
       audio.src = "";
     };
   }, []);
+
+  // Autofocus en recuerdo
+  useEffect(() => {
+    if (phase === "recall") {
+      setTimeout(() => textareaRef.current?.focus(), 50);
+    }
+  }, [phase]);
 
   const begin = () => {
     setPhase("listening");
@@ -77,21 +70,30 @@ export function VerbalMemorySubtest({ onComplete, onPause }: SubtestProps) {
   const playListOnce = async () => {
     if (isPlaying || !audioRef.current) return;
     setIsPlaying(true);
-
     try {
       await audioRef.current.play();
     } catch (err) {
       console.error(err);
-      alert("No se pudo reproducir el audio. Verifica que el usuario haya interactuado antes (click).");
+      alert(
+        "No se pudo reproducir el audio. En iOS/Safari, toca primero el botón de reproducción."
+      );
       setIsPlaying(false);
     }
   };
 
+  // Parsing no destructivo
   const parseRecall = (txt: string) =>
     txt
       .split(/[\n,;\s]+/)
       .map((w) => w.trim())
       .filter((w) => w.length > 0);
+
+  // Métricas en vivo (solo UI)
+  const parsedWords = useMemo(() => parseRecall(recallText), [recallText]);
+  const uniqueWords = useMemo(
+    () => Array.from(new Set(parsedWords.map((w) => w.toLowerCase()))),
+    [parsedWords]
+  );
 
   const finishAndPost = async () => {
     if (!evaluationId) {
@@ -136,18 +138,19 @@ export function VerbalMemorySubtest({ onComplete, onPause }: SubtestProps) {
   // ===== RENDER =====
   if (phase === "instructions") {
     return (
-      <div className={`min-h-[70vh] w-full ${styles.backdrop} py-8 sm:py-10 px-4`}>
-        <div className="mx-auto max-w-4xl">
+      <main className={styles.shell}>
+        <section className="mx-auto max-w-5xl px-4 py-8 sm:py-10">
           <header className="mb-6">
-            <h1 className="text-white/90 text-2xl sm:text-3xl font-semibold tracking-tight">
-              Memoria Verbal
+            <h1 className="text-slate-900 text-2xl sm:text-3xl font-semibold tracking-tight">
+              Memoria verbal
             </h1>
-            <p className="text-white/70 text-sm sm:text-base mt-1 max-w-2xl">
-              Escucharás una lista única de palabras grabadas con voz humana y, a continuación, escribirás todas las que recuerdes.
+            <p className="text-slate-600 text-sm sm:text-base mt-1 max-w-2xl">
+              Escucharás una lista de palabras y, a continuación, escribirás
+              todas las que recuerdes.
             </p>
           </header>
 
-          <Card className={`${styles.card} shadow-xl`}>
+          <Card className={styles.card}>
             <CardHeader className="pb-2">
               <CardTitle className="text-lg sm:text-xl lg:text-2xl text-slate-900">
                 Instrucciones
@@ -156,75 +159,120 @@ export function VerbalMemorySubtest({ onComplete, onPause }: SubtestProps) {
             <CardContent className="space-y-5">
               <div className="rounded-lg bg-slate-50 p-4 sm:p-5 border border-slate-200">
                 <p className="text-slate-700 text-sm sm:text-base">
-                  Se reproducirá una grabación de audio con <strong>{WORD_LIST.length} palabras</strong>.
-                  Después, anote todas las palabras que recuerde —<em>en cualquier orden</em>— separándolas por espacios o comas.
+                  Se reproducirá una grabación con{" "}
+                  <strong>{WORD_LIST.length} palabras</strong>. Después, anota
+                  todas las palabras que recuerdes —en cualquier orden—
+                  separándolas por espacios o comas.
                 </p>
               </div>
-              <div className={`${styles.warn} rounded-lg p-3 sm:p-4`}>
-                <p className="text-sm sm:text-base">
-                  <strong>Importante:</strong> asegúrese de tener el sonido activado. En iOS, debe tocar el botón de reproducción para iniciar el audio.
-                </p>
+              <div
+                className={`${styles.warn} rounded-lg p-3 sm:p-4 text-sm sm:text-base`}
+              >
+                <strong>Importante:</strong> asegúrate de tener el sonido
+                activado. En iOS/Safari, puede requerirse tocar el botón de
+                reproducción.
               </div>
               <div className="flex gap-2">
                 <Badge variant="outline">Lista única</Badge>
                 <Badge variant="secondary">Sin ensayos repetidos</Badge>
                 <Badge variant="secondary">Sin retardo</Badge>
               </div>
-              <div className="flex justify-end gap-3">
+              <div className="flex justify-end gap-3 pt-1">
                 {onPause && (
-                  <Button variant="outline" onClick={onPause} className={styles.outline}>Pausar</Button>
+                  <Button
+                    variant="outline"
+                    onClick={onPause}
+                    className={`hidden sm:inline-flex ${styles.outline}`}
+                  >
+                    Pausar
+                  </Button>
                 )}
-                <Button onClick={begin} className={`${styles.primary}`}>Comenzar</Button>
+                <Button
+                  onClick={begin}
+                  className={`${styles.primary} w-full sm:w-auto`}
+                >
+                  Comenzar
+                </Button>
               </div>
             </CardContent>
           </Card>
-        </div>
-      </div>
+        </section>
+      </main>
     );
   }
 
   if (phase === "listening") {
     return (
-      <div className={`min-h-[60vh] w-full ${styles.backdrop} py-6 px-4`}>
-        <div className="mx-auto max-w-3xl">
-          <Card className={`${styles.card} shadow-xl`}>
-            <CardHeader>
+      <main className={styles.shell}>
+        <section className="mx-auto max-w-4xl px-4 py-6 sm:py-8">
+          <Card className={styles.card}>
+            <CardHeader className="pb-2">
               <CardTitle className="flex items-center justify-between text-slate-900">
-                <span>Escucha de la lista (1 vez)</span>
-                <Badge variant="outline">Presentación</Badge>
+                <span className="text-base sm:text-lg">
+                  Escucha de la lista (1 vez)
+                </span>
+                <Badge
+                  variant="outline"
+                  className="text-xs sm:text-sm border-slate-300 text-slate-700"
+                >
+                  Presentación
+                </Badge>
               </CardTitle>
             </CardHeader>
-            <CardContent className="text-center">
+            <CardContent className="space-y-4 sm:space-y-5 text-center">
+              <p className="text-slate-600 text-sm sm:text-base">
+                Pulsa el botón para reproducir la lista de palabras. Después
+                pasarás automáticamente a la fase de recuerdo.
+              </p>
               <Button
                 onClick={playListOnce}
                 disabled={isPlaying}
                 size="lg"
-                className={`${styles.primary} mb-2`}
+                className={`${styles.primary}`}
               >
-                <Volume2 className="w-5 h-5 mr-2" />{" "}
+                <Volume2 className="w-5 h-5 mr-2" />
                 {isPlaying ? "Reproduciendo…" : "Reproducir lista"}
               </Button>
             </CardContent>
           </Card>
-        </div>
-      </div>
+        </section>
+      </main>
     );
   }
 
   if (phase === "recall") {
     return (
-      <div className={`min-h-[70vh] w-full ${styles.backdrop} py-8 px-4`}>
-        <div className="mx-auto max-w-4xl">
-          <div className="sticky top-0 z-20 mb-3">
-            <Card className={`${styles.card} shadow-lg`}>
-              <CardContent className="p-3 sm:p-4 flex items-center justify-between">
+      <main className={styles.shell}>
+        <section className="mx-auto max-w-5xl px-4 py-8">
+          {/* Barra superior sticky con acciones y KPIs simples */}
+          <div className="sticky top-[56px] z-20 mb-3 sm:mb-4">
+            <Card className={styles.card}>
+              <CardContent className="p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
                 <div>
-                  <p className={`${styles.kpiLabel} text-xs sm:text-sm`}>Fase</p>
-                  <p className="font-semibold text-slate-900">Recuerdo inmediato</p>
+                  <p className={`${styles.kpiLabel} text-xs sm:text-sm`}>
+                    Fase
+                  </p>
+                  <p className="font-semibold text-slate-900 text-sm sm:text-base">
+                    Recuerdo inmediato
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm">
+                  <Badge variant="secondary">
+                    Total tecleado: {parsedWords.length}
+                  </Badge>
+                  <Badge variant="outline">
+                    Únicas: {uniqueWords.length}
+                  </Badge>
                 </div>
                 <div className="flex gap-2">
                   {onPause && (
-                    <Button variant="outline" onClick={onPause} className={styles.outline}>Pausar</Button>
+                    <Button
+                      variant="outline"
+                      onClick={onPause}
+                      className={styles.outline}
+                    >
+                      Pausar
+                    </Button>
                   )}
                   <Button
                     onClick={finishAndPost}
@@ -238,23 +286,56 @@ export function VerbalMemorySubtest({ onComplete, onPause }: SubtestProps) {
             </Card>
           </div>
 
-          <Card className={`${styles.card} shadow-xl`}>
+          <Card className={styles.card}>
             <CardHeader>
-              <CardTitle className="flex items-center justify-between text-slate-900">
-                <span>Anote las palabras recordadas</span>
-                <Badge variant="outline">Lista de {WORD_LIST.length}</Badge>
+              <CardTitle className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between text-slate-900">
+                <span className="text-base sm:text-lg">
+                  Anota las palabras recordadas
+                </span>
+                <Badge
+                  variant="outline"
+                  className="text-xs sm:text-sm border-slate-300 text-slate-700"
+                >
+                  Lista de {WORD_LIST.length}
+                </Badge>
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <label className="block text-sm font-medium text-slate-800">
-                Escriba las palabras recordadas (separadas por comas o espacios):
+            <CardContent className="space-y-4 sm:space-y-5">
+              <label
+                htmlFor="recall-input"
+                className="block text-sm font-medium text-slate-800"
+              >
+                Escribe las palabras separadas por comas o espacios:
               </label>
               <Textarea
+                id="recall-input"
+                ref={textareaRef}
                 className="min-h-40 bg-slate-50 border-slate-300 focus-visible:ring-0 focus-visible:border-slate-400"
                 value={recallText}
                 onChange={(e) => setRecallText(e.target.value)}
-                placeholder="Ej.: manzana, perro, falda, plátano…"
+                placeholder="Ej.: gato, perro, vaca…"
+                aria-label="Área para escribir palabras recordadas"
               />
+
+              {parsedWords.length > 0 && (
+                <div className="space-y-2">
+                  <p className={`${styles.kpiLabel} text-xs`}>
+                    Previsualización (únicas)
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {uniqueWords.map((w, i) => (
+                      <Badge
+                        key={`${w}-${i}`}
+                        variant="secondary"
+                        className="text-[12px]"
+                      >
+                        {w}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div className="flex justify-end gap-2">
                 {onPause && (
                   <Button
@@ -276,27 +357,32 @@ export function VerbalMemorySubtest({ onComplete, onPause }: SubtestProps) {
               </div>
             </CardContent>
           </Card>
-        </div>
-      </div>
+        </section>
+      </main>
     );
   }
 
+  // completed
   return (
-    <div className={`${styles.backdrop} min-h-[60vh] py-8 px-4`}>
-      <div className="mx-auto max-w-3xl">
-        <Card className={`${styles.card} shadow-xl`}>
+    <main className={styles.shell}>
+      <section className="mx-auto max-w-3xl px-4 py-8 sm:py-10">
+        <Card className={styles.card}>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-slate-900">
-              <CheckCircle2 className="h-5 w-5 text-emerald-600" /> Test completado
+            <CardTitle className="flex items-center gap-2 text-slate-900 text-lg sm:text-xl">
+              <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+              Subtest completado
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <p className="text-sm text-slate-600">
-              Los resultados se han guardado correctamente.
-            </p>
+          <CardContent className="space-y-4 sm:space-y-5">
+            <div className="rounded-lg bg-slate-50 p-4 border border-slate-200 text-sm sm:text-base text-slate-700">
+              Los resultados se han guardado correctamente en la evaluación
+              actual.
+            </div>
           </CardContent>
         </Card>
-      </div>
-    </div>
+      </section>
+    </main>
   );
 }
+
+export default VerbalMemorySubtest;

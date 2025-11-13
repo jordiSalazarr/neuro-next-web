@@ -1,7 +1,7 @@
 "use client"
 
 import { AppProvider, useApp } from "@/contexts/AppContext"
-import { LoginScreen } from "@/components/LoginScreen"
+import LoginScreen  from "@/components/LoginScreen"
 import PatientSelectionScreen  from "@/components/PatientSelectionScreen"
 import  TestRunner  from "@/components/TestRunner"
 import ResultsScreen  from "@/components/ResultsScreen"

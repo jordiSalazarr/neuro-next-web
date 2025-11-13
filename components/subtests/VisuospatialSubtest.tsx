@@ -9,7 +9,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogTrigger,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import type { SubtestProps } from "@/types";
 import { useEvaluationStore } from "@/src/stores/evaluation";
 
@@ -28,11 +35,11 @@ type Props = SubtestProps & {
   times?: (string | ClockItem)[];
 };
 
-// ================== Tokens de estilo (coherentes con el resto) ==================
+// ================== Tokens de estilo (alineados con AttentionSubtest) ==================
 const styles = {
-  backdrop: "bg-[#0E2F3C]", // azul hospital
-  card: "bg-white/80 backdrop-blur border-slate-200",
-  primary: "bg-[#0E7C86] hover:bg-[#0a646c] text-white",
+  card:
+    "bg-white/85 backdrop-blur border border-slate-200/70 shadow-xl rounded-2xl",
+  primary: "bg-brand-600 hover:bg-slate-900 text-white",
   outline: "border-slate-300 text-slate-800 hover:bg-slate-50",
   kpiLabel: "text-slate-500",
   kpiValue: "text-slate-900",
@@ -62,18 +69,30 @@ async function canvasToPngBlob(canvas: HTMLCanvasElement): Promise<Blob> {
   ctx.fillRect(0, 0, off.width, off.height);
   ctx.drawImage(canvas, 0, 0);
   return new Promise<Blob>((resolve, reject) => {
-    off.toBlob((blob) => (blob ? resolve(blob) : reject(new Error("toBlob error"))), "image/png", 1.0);
+    off.toBlob(
+      (blob) => (blob ? resolve(blob) : reject(new Error("toBlob error"))),
+      "image/png",
+      1.0
+    );
   });
 }
 
 /** Reloj de referencia “perfecto” para la hora objetivo */
-function PerfectClock({ hour, min, size = 260 }: { hour: number; min: number; size?: number }) {
+function PerfectClock({
+  hour,
+  min,
+  size = 260,
+}: {
+  hour: number;
+  min: number;
+  size?: number;
+}) {
   const cx = size / 2;
   const cy = size / 2;
   const r = size * 0.42;
 
   const minuteAngle = (min % 60) * 6; // 6° por minuto
-  const hourAngle = ((hour % 12) * 30) + (min * 0.5); // 30° por hora + 0.5° por min
+  const hourAngle = (hour % 12) * 30 + min * 0.5; // 30° por hora + 0.5° por min
 
   const deg2rad = (d: number) => (Math.PI / 180) * (d - 90); // 0° = arriba (12)
   const handEnd = (len: number, angle: number) => ({
@@ -97,7 +116,17 @@ function PerfectClock({ hour, min, size = 260 }: { hour: number; min: number; si
         const y1 = cy + inner * Math.sin(deg2rad(angle));
         const x2 = cx + outer * Math.cos(deg2rad(angle));
         const y2 = cy + outer * Math.sin(deg2rad(angle));
-        return <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke="#9CA3AF" strokeWidth={i % 5 === 0 ? 2 : 1} />;
+        return (
+          <line
+            key={i}
+            x1={x1}
+            y1={y1}
+            x2={x2}
+            y2={y2}
+            stroke="#9CA3AF"
+            strokeWidth={i % 5 === 0 ? 2 : 1}
+          />
+        );
       })}
       {/* números */}
       {nums.map((n) => {
@@ -106,7 +135,15 @@ function PerfectClock({ hour, min, size = 260 }: { hour: number; min: number; si
         const x = cx + rr * Math.cos(deg2rad(angle));
         const y = cy + rr * Math.sin(deg2rad(angle)) + 4;
         return (
-          <text key={n} x={x} y={y} fontSize={size * 0.08} textAnchor="middle" fill="#111827" fontFamily="system-ui, -apple-system, Segoe UI, Roboto">
+          <text
+            key={n}
+            x={x}
+            y={y}
+            fontSize={size * 0.08}
+            textAnchor="middle"
+            fill="#111827"
+            fontFamily="system-ui, -apple-system, Segoe UI, Roboto"
+          >
             {n}
           </text>
         );
@@ -114,9 +151,25 @@ function PerfectClock({ hour, min, size = 260 }: { hour: number; min: number; si
       {/* eje */}
       <circle cx={cx} cy={cy} r={3} fill="#111827" />
       {/* manecilla hora */}
-      <line x1={cx} y1={cy} x2={hourEnd.x} y2={hourEnd.y} stroke="#111827" strokeWidth="4" strokeLinecap="round" />
+      <line
+        x1={cx}
+        y1={cy}
+        x2={hourEnd.x}
+        y2={hourEnd.y}
+        stroke="#111827"
+        strokeWidth="4"
+        strokeLinecap="round"
+      />
       {/* manecilla minuto */}
-      <line x1={cx} y1={cy} x2={minEnd.x} y2={minEnd.y} stroke="#111827" strokeWidth="3" strokeLinecap="round" />
+      <line
+        x1={cx}
+        y1={cy}
+        x2={minEnd.x}
+        y2={minEnd.y}
+        stroke="#111827"
+        strokeWidth="3"
+        strokeLinecap="round"
+      />
     </svg>
   );
 }
@@ -132,7 +185,9 @@ export function VisuospatialSubtest({
   const { hour, min } = parseHHmm(targetClock.time);
   const evaluationId = useEvaluationStore((s) => s.currentEvaluation?.id);
 
-  const [phase, setPhase] = useState<"instructions" | "drawing" | "evaluating" | "submitted">("instructions");
+  const [phase, setPhase] = useState<
+    "instructions" | "drawing" | "evaluating" | "submitted"
+  >("instructions");
 
   const [isDrawing, setIsDrawing] = useState(false);
   const [strokes, setStrokes] = useState<DrawingStroke[]>([]);
@@ -186,7 +241,7 @@ export function VisuospatialSubtest({
 
     // Trazo actual
     if (currentStroke.length > 1) {
-      ctx.strokeStyle = "#0E7C86"; // corporativo
+      ctx.strokeStyle = "#0E7C86"; // acento corporativo sobre fondo blanco
       ctx.lineWidth = 2;
       ctx.lineCap = "round";
       ctx.lineJoin = "round";
@@ -322,75 +377,113 @@ export function VisuospatialSubtest({
 
   if (phase === "instructions") {
     return (
-      <div className={`min-h-[70vh] w-full ${styles.backdrop} py-8 sm:py-10 px-4`}>
-        <div className="mx-auto max-w-4xl">
+      <main className="min-h-[calc(100vh-56px)]">
+        <section className="mx-auto max-w-5xl px-4 py-8 sm:py-10">
           <header className="mb-6">
-            <h1 className="text-white/90 text-2xl sm:text-3xl font-semibold tracking-tight">Test del Reloj (CDT)</h1>
-            <p className="text-white/70 text-sm sm:text-base mt-1 max-w-2xl">
-              Dibuje un reloj que muestre la hora indicada. Incluya círculo, números 1–12 y dos manecillas.
+            <h1 className="text-slate-900 text-2xl sm:text-3xl font-semibold tracking-tight">
+              Test del reloj (CDT)
+            </h1>
+            <p className="text-slate-600 text-sm sm:text-base mt-1 max-w-2xl">
+              Dibuje un reloj que muestre la hora indicada. Incluya círculo, números del 1 al 12 y dos
+              manecillas.
             </p>
           </header>
 
-          <Card className={`${styles.card} shadow-xl`}>
+          <Card className={styles.card}>
             <CardHeader className="pb-2">
-              <CardTitle className="text-lg sm:text-xl lg:text-2xl text-slate-900">Instrucciones</CardTitle>
+              <CardTitle className="text-lg sm:text-xl lg:text-2xl text-slate-900">
+                Instrucciones
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-5">
               <div className="rounded-lg bg-slate-50 p-4 sm:p-5 border border-slate-200">
-                <h4 className="font-semibold text-slate-900 mb-3 text-sm sm:text-base">Indicación al paciente</h4>
+                <h4 className="font-semibold text-slate-900 mb-3 text-sm sm:text-base">
+                  Indicación al paciente
+                </h4>
                 <ul className="space-y-2 text-slate-700 text-sm sm:text-base">
                   <li>• Dibuje un reloj que muestre la hora indicada.</li>
                   <li>• Dibuje un círculo, los números del 1 al 12 y dos manecillas.</li>
                   <li>• Use el ratón o el dedo para dibujar.</li>
                 </ul>
               </div>
-              <div className="flex justify-end gap-3">
+              <div className="flex justify-end gap-3 pt-1">
                 {onPause && (
-                  <Button variant="outline" onClick={onPause} className={styles.outline}>Pausar</Button>
+                  <Button
+                    variant="outline"
+                    onClick={onPause}
+                    className={`hidden sm:inline-flex ${styles.outline}`}
+                  >
+                    Pausar
+                  </Button>
                 )}
-                <Button onClick={startSubtest} className={styles.primary} size="lg">Comenzar</Button>
+                <Button
+                  onClick={startSubtest}
+                  size="lg"
+                  className={`${styles.primary} w-full sm:w-auto`}
+                >
+                  Comenzar
+                </Button>
               </div>
             </CardContent>
           </Card>
-        </div>
-      </div>
+        </section>
+      </main>
     );
   }
 
-  // --- DRAWING (sin reloj perfecto) ---
   if (phase === "drawing") {
     return (
-      <div className={`min-h-[70vh] w-full ${styles.backdrop} py-8 px-4`}>
-        <div className="mx-auto max-w-4xl">
-          <Card className={`${styles.card} shadow-xl`}>
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between text-slate-900">
-                <span>
-                  Dibuje un reloj que marque las <strong>{targetClock.time} </strong>
+      <main className="min-h-[calc(100vh-56px)]">
+        <section className="mx-auto max-w-5xl px-4 py-6 sm:py-8">
+          <Card className={styles.card}>
+            <CardHeader className="pb-3 sm:pb-4">
+              <CardTitle className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between text-slate-900">
+                <span className="text-base sm:text-lg">
+                  Dibuje un reloj que marque las{" "}
+                  <strong className="font-semibold">{targetClock.time}</strong>{" "}
                   {targetClock.description && (
-                    <span className="text-slate-500">({targetClock.description})</span>
+                    <span className="text-slate-500">
+                      ({targetClock.description})
+                    </span>
                   )}
                 </span>
-                <div className="flex gap-2 items-center">
-                  <Badge variant="default" className="text-base px-3 py-1">{targetClock.time}</Badge>
-                  <Badge variant="outline">Trazos: {strokes.length}</Badge>
+                <div className="flex gap-2 items-center justify-start sm:justify-end">
+                  <Badge
+                    variant="default"
+                    className="text-sm sm:text-base px-3 py-1 bg-brand-600 text-white"
+                  >
+                    {targetClock.time}
+                  </Badge>
+                  <Badge
+                    variant="outline"
+                    className="text-xs sm:text-sm border-slate-300 text-slate-700"
+                  >
+                    Trazos: {strokes.length}
+                  </Badge>
                 </div>
               </CardTitle>
             </CardHeader>
 
-            <CardContent className="space-y-4">
-              {/* SOLO lienzo para el paciente; sin reloj de referencia */}
+            <CardContent className="space-y-5 sm:space-y-6">
+              <p className="text-slate-600 text-sm sm:text-base text-center">
+                Dibuje dentro del círculo. Puede limpiar el dibujo o descargarlo en PNG si lo desea.
+              </p>
+
               <div className="flex justify-center">
                 <canvas
                   ref={canvasRef}
                   width={420}
                   height={420}
-                  className="border border-slate-300 rounded-lg bg-white cursor-crosshair touch-none shadow-sm"
+                  className="border border-slate-200 rounded-xl bg-white cursor-crosshair touch-none shadow-sm"
                 />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                <Button variant="outline" onClick={clearCanvas} className={styles.outline}>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
+                <Button
+                  variant="outline"
+                  onClick={clearCanvas}
+                  className={styles.outline}
+                >
                   Limpiar
                 </Button>
                 <Button
@@ -410,56 +503,79 @@ export function VisuospatialSubtest({
                 >
                   Descargar PNG
                 </Button>
-                <Button onClick={proceedToEvaluation} disabled={strokes.length === 0} className={`${styles.primary} font-semibold`}>
+                <Button
+                  onClick={proceedToEvaluation}
+                  disabled={strokes.length === 0}
+                  className={`${styles.primary} font-semibold`}
+                >
                   Pasar a evaluación
                 </Button>
               </div>
             </CardContent>
           </Card>
-        </div>
-      </div>
+        </section>
+      </main>
     );
   }
 
   if (phase === "evaluating") {
     return (
-      <div className={`min-h-[70vh] w-full ${styles.backdrop} py-8 px-4`}>
-        <div className="mx-auto max-w-5xl">
-          <Card className={`${styles.card} shadow-xl`}>
-            <CardHeader>
-              <CardTitle className="text-slate-900">Evaluación (Shulman 0–5)</CardTitle>
+      <main className="min-h-[calc(100vh-56px)]">
+        <section className="mx-auto max-w-6xl px-4 py-6 sm:py-8">
+          <Card className={styles.card}>
+            <CardHeader className="pb-3 sm:pb-4">
+              <CardTitle className="text-lg sm:text-xl text-slate-900">
+                Evaluación del dibujo — Escala de Shulman (0–5)
+              </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid gap-6 sm:grid-cols-2">
+            <CardContent className="space-y-6 sm:space-y-7">
+              <div className="grid gap-6 sm:gap-8 sm:grid-cols-2 items-start">
                 <div>
-                  <Label className="block mb-2 text-slate-800">Dibujo del paciente</Label>
+                  <Label className="block mb-2 text-slate-800 text-sm sm:text-base">
+                    Dibujo del paciente
+                  </Label>
                   {userImageUrl ? (
                     <img
                       src={userImageUrl}
                       alt="Dibujo del paciente"
-                      className="border border-slate-300 rounded-lg w-full max-w-[420px] bg-white shadow-sm"
+                      className="border border-slate-200 rounded-xl w-full max-w-[420px] bg-white shadow-sm"
                     />
                   ) : (
-                    <div className="text-sm text-slate-500">No hay imagen</div>
+                    <div className="text-sm text-slate-500">
+                      No hay imagen disponible.
+                    </div>
                   )}
                 </div>
                 <div>
-                  <Label className="block mb-2 text-slate-800">
+                  <Label className="block mb-2 text-slate-800 text-sm sm:text-base">
                     Reloj de referencia — {targetClock.time}{" "}
-                    {targetClock.description && <span className="text-slate-500">({targetClock.description})</span>}
+                    {targetClock.description && (
+                      <span className="text-slate-500">
+                        ({targetClock.description})
+                      </span>
+                    )}
                   </Label>
-                  <div className="border border-slate-200 rounded-lg p-3 bg-white inline-block shadow-sm">
+                  <div className="border border-slate-200 rounded-xl p-3 sm:p-4 bg-white inline-block shadow-sm">
                     <PerfectClock hour={hour} min={min} size={260} />
                   </div>
                 </div>
               </div>
 
-              <div className="grid gap-4">
+              <div className="space-y-5">
                 <div>
-                  <Label className="mb-2 block text-slate-800">Puntuación (0–5)</Label>
-                  <RadioGroup value={score} onValueChange={setScore} className="grid grid-cols-3 gap-3 sm:grid-cols-6">
-                    {["0","1","2","3","4","5"].map((v) => (
-                      <div key={v} className="flex items-center space-x-2 border border-slate-200 rounded-md px-3 py-2 bg-white/80">
+                  <Label className="mb-2 block text-slate-800 text-sm sm:text-base">
+                    Puntuación (0–5)
+                  </Label>
+                  <RadioGroup
+                    value={score}
+                    onValueChange={setScore}
+                    className="grid grid-cols-3 gap-2 sm:grid-cols-6 sm:gap-3"
+                  >
+                    {["0", "1", "2", "3", "4", "5"].map((v) => (
+                      <div
+                        key={v}
+                        className="flex items-center space-x-2 border border-slate-200 rounded-lg px-3 py-2 bg-white/90"
+                      >
                         <RadioGroupItem id={`score-${v}`} value={v} />
                         <Label htmlFor={`score-${v}`}>{v}</Label>
                       </div>
@@ -468,11 +584,13 @@ export function VisuospatialSubtest({
                 </div>
 
                 <div>
-                  <Label className="mb-2 block text-slate-800">Observaciones</Label>
+                  <Label className="mb-2 block text-slate-800 text-sm sm:text-base">
+                    Observaciones
+                  </Label>
                   <Textarea
                     value={note}
                     onChange={(e) => setNote(e.target.value)}
-                    placeholder="Errores de números, orientación de manecillas, espaciado, etc."
+                    placeholder="Errores de números, orientación de manecillas, espaciado, perseveraciones, etc."
                     rows={4}
                     className="bg-slate-50 border-slate-300 focus-visible:ring-0 focus-visible:border-slate-400"
                   />
@@ -481,29 +599,66 @@ export function VisuospatialSubtest({
                 <div className="flex flex-wrap gap-2 items-center">
                   <Dialog>
                     <DialogTrigger asChild>
-                      <Button variant="outline" className={styles.outline}>Ver criterios (Shulman 0–5)</Button>
+                      <Button
+                        variant="outline"
+                        className={styles.outline}
+                      >
+                        Ver criterios (Shulman 0–5)
+                      </Button>
                     </DialogTrigger>
                     <DialogContent>
                       <DialogHeader>
                         <DialogTitle>Escala de Shulman (0–5)</DialogTitle>
                         <DialogDescription asChild>
                           <div className="text-sm mt-3 space-y-2 text-slate-800">
-                            <p><strong>5</strong> — Dibujo correcto: círculo, números 1–12 bien colocados y hora correcta con ambas manecillas.</p>
-                            <p><strong>4</strong> — Leves errores (p. ej., espaciado algo irregular o colocación ligera de números) con hora correcta.</p>
-                            <p><strong>3</strong> — Errores moderados: números desordenados/duplicados/omisos; hora aproximada o manos imprecisas.</p>
-                            <p><strong>2</strong> — Desorganización notable: números concentrados en un lado; manos ausentes o claramente incorrectas.</p>
-                            <p><strong>1</strong> — Incapacidad para representar un reloj de forma comprensible.</p>
-                            <p><strong>0</strong> — Ningún intento o dibujo irreconocible.</p>
+                            <p>
+                              <strong>5</strong> — Dibujo correcto: círculo,
+                              números 1–12 bien colocados y hora correcta con
+                              ambas manecillas.
+                            </p>
+                            <p>
+                              <strong>4</strong> — Leves errores (p. ej.,
+                              espaciado algo irregular o ligera desviación de
+                              números) con hora correcta.
+                            </p>
+                            <p>
+                              <strong>3</strong> — Errores moderados:
+                              números desordenados/duplicados/omisos; hora
+                              aproximada o manecillas imprecisas.
+                            </p>
+                            <p>
+                              <strong>2</strong> — Desorganización notable:
+                              números concentrados en un lado; ausencia de
+                              manos o clara incorrectitud.
+                            </p>
+                            <p>
+                              <strong>1</strong> — Incapacidad para representar
+                              un reloj de forma reconocible.
+                            </p>
+                            <p>
+                              <strong>0</strong> — Ningún intento o dibujo
+                              irreconocible.
+                            </p>
                           </div>
                         </DialogDescription>
                       </DialogHeader>
                     </DialogContent>
                   </Dialog>
 
-                  <Button onClick={() => setPhase("drawing")} variant="ghost">Volver al dibujo</Button>
+                  <Button
+                    onClick={() => setPhase("drawing")}
+                    variant="ghost"
+                    className="text-slate-600 hover:bg-slate-50"
+                  >
+                    Volver al dibujo
+                  </Button>
 
                   <div className="ml-auto">
-                    <Button onClick={submitScore} disabled={submitting || !evaluationId} className={`${styles.primary} font-semibold`}>
+                    <Button
+                      onClick={submitScore}
+                      disabled={submitting || !evaluationId}
+                      className={`${styles.primary} font-semibold`}
+                    >
                       {submitting ? "Guardando…" : "Guardar puntuación"}
                     </Button>
                   </div>
@@ -511,29 +666,37 @@ export function VisuospatialSubtest({
               </div>
             </CardContent>
           </Card>
-        </div>
-      </div>
+        </section>
+      </main>
     );
   }
 
   // submitted
   return (
-    <div className={`${styles.backdrop} min-h-[60vh] py-8 px-4`}>
-      <div className="mx-auto max-w-3xl">
-        <Card className={`${styles.card} shadow-xl`}>
+    <main className="min-h-[calc(100vh-56px)]">
+      <section className="mx-auto max-w-3xl px-4 py-8 sm:py-10">
+        <Card className={styles.card}>
           <CardHeader>
-            <CardTitle className="text-slate-900">Puntuación enviada</CardTitle>
+            <CardTitle className="text-lg sm:text-xl text-slate-900">
+              Puntuación enviada
+            </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="bg-emerald-50 p-4 rounded-lg text-emerald-900 border border-emerald-200">
-              Puntuación (Shulman): <strong>{score}</strong>. {note ? "Observaciones guardadas." : "Sin observaciones."}
+          <CardContent className="space-y-4 sm:space-y-5">
+            <div className="rounded-lg bg-emerald-50 p-4 border border-emerald-200 text-sm sm:text-base text-emerald-900">
+              Puntuación (Shulman):{" "}
+              <strong className="font-semibold">{score}</strong>.{" "}
+              {note ? "Observaciones guardadas." : "Sin observaciones."}
             </div>
-            <div className="text-right">
-              <Button onClick={() => onPause?.()} className={styles.primary}>Cerrar</Button>
+            <div className="flex justify-end">
+              <Button onClick={() => onPause?.()} className={styles.primary}>
+                Cerrar
+              </Button>
             </div>
           </CardContent>
         </Card>
-      </div>
-    </div>
+      </section>
+    </main>
   );
 }
+
+export default VisuospatialSubtest;

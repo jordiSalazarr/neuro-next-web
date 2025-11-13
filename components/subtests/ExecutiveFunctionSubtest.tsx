@@ -23,11 +23,11 @@ const TMT_B_SEQUENCE = ["1","A","2","B","3","C","4","D","5","E","6","F"]
 
 type Phase = "instructions" | "tmt-a" | "tmt-b" | "completed"
 
-// ================== UI tokens (coherentes con el resto de subtests) ==================
+// ========= UI tokens =========
 const styles = {
-  backdrop: "bg-[#0E2F3C]",
-  card: "bg-white/80 backdrop-blur border-slate-200",
-  primary: "bg-[#0E7C86] hover:bg-[#0a646c] text-white",
+  shell: "min-h-[calc(100vh-56px)]",
+  card: "bg-white/85 backdrop-blur border border-slate-200/70 shadow-xl rounded-2xl",
+  primary: "bg-brand-600 hover:bg-slate-900 text-white",
   outline: "border-slate-300 text-slate-800 hover:bg-slate-50",
   kpiLabel: "text-slate-500",
   kpiValue: "text-slate-900",
@@ -43,15 +43,15 @@ export function ExecutiveFunctionSubtest(
   const [corrections, setCorrections] = useState(0)
 
   // tiempos
-  const [globalStart, setGlobalStart] = useState<Date | null>(null) // inicio del test (A+B)
-  const [phaseStart, setPhaseStart] = useState<Date | null>(null)   // inicio de fase actual
+  const [globalStart, setGlobalStart] = useState<Date | null>(null)
+  const [phaseStart, setPhaseStart] = useState<Date | null>(null)
   const [tmtATime, setTmtATime] = useState(0) // ms
   const [tmtBTime, setTmtBTime] = useState(0) // ms
   const [tmtAErrors, setTmtAErrors] = useState(0)
   const [tmtBErrors, setTmtBErrors] = useState(0)
 
-  // clicks
-  const [phaseClicks, setPhaseClicks] = useState(0) // clicks solo de la fase actual
+  // clicks (fase actual)
+  const [phaseClicks, setPhaseClicks] = useState(0)
 
   // marcas ISO por fase
   const [tmtAStartIso, setTmtAStartIso] = useState<string | null>(null)
@@ -63,9 +63,10 @@ export function ExecutiveFunctionSubtest(
   const base = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8401"
   const endpoint = new URL("/v1/evaluations/executive-functions", base).toString()
 
-  const numberOfItemsA = TMT_A_SEQUENCE.length // 12
-  const numberOfItemsB = TMT_B_SEQUENCE.length // 12
+  const numberOfItemsA = TMT_A_SEQUENCE.length
+  const numberOfItemsB = TMT_B_SEQUENCE.length
 
+  // ======= Helpers =======
   const generateNodes = (sequence: string[]) => {
     const newNodes: Node[] = []
     const used: { x:number; y:number }[] = []
@@ -147,15 +148,13 @@ export function ExecutiveFunctionSubtest(
         const createdAtIso = new Date().toISOString()
 
         if (phase === "tmt-a") {
-          // Métricas de A
           const aErrors = errors
           setTmtATime(phaseTimeMs)
           setTmtAErrors(aErrors)
 
-          // POST de A (type:"a")
           const payloadA = {
             numberOfItems: numberOfItemsA,
-            totalClicks: phaseClicks + 1, // este click final ya se contó arriba; +1 para asegurar
+            totalClicks: phaseClicks + 1,
             startAt: tmtAStartIso ?? new Date().toISOString(),
             totalErrors: aErrors,
             totalCorrect: numberOfItemsA,
@@ -166,15 +165,12 @@ export function ExecutiveFunctionSubtest(
           }
           try { await postPhase(payloadA) } catch (e) { console.error("POST TMT-A:", e) }
 
-          // Lanzar B
           startTMTB()
         } else {
-          // Métricas de A+B (B)
           const bErrors = errors
           setTmtBTime(phaseTimeMs)
           setTmtBErrors(bErrors)
 
-          // POST de B (type:"a+b") — NO agregamos con A, solo datos de B
           const payloadB = {
             numberOfItems: numberOfItemsB,
             totalClicks: phaseClicks + 1,
@@ -188,10 +184,8 @@ export function ExecutiveFunctionSubtest(
           }
           try { await postPhase(payloadB) } catch (e) { console.error("POST TMT-A+B:", e) }
 
-          // cerrar test
           setPhase("completed")
 
-          // onComplete: puedes reportar ambos tiempos/errores (solo para UI), sin agregarlos al backend
           const timeSpent = globalStart ? Math.round((Date.now() - globalStart.getTime()) / 1000) : 0
           onComplete?.({
             startTime: globalStart || new Date(),
@@ -211,95 +205,90 @@ export function ExecutiveFunctionSubtest(
         }
       }
     } else {
-      // incorrecto
+      // incorrecto (feedback sutil y re-activar actual)
       setErrors(e => e + 1)
       const newNodes = nodes.map(n => (n.id === clickedNode.id ? { ...n, isActive: false } : n))
       setNodes(newNodes)
       setTimeout(() => {
         setNodes(prev => prev.map(n => ({ ...n, isActive: n.order === currentSequenceIndex })))
         setCorrections(c => c + 1)
-      }, 400)
+      }, 350)
     }
   }
 
-  // ------- Render -------
+  // ======= Render =======
   if (phase === "instructions") {
     return (
-      <div className={`min-h-[70vh] w-full ${styles.backdrop} py-8 sm:py-10 px-4`}>
-        <div className="mx-auto max-w-4xl">
+      <main className={styles.shell}>
+        <section className="mx-auto max-w-4xl px-4 py-8 sm:py-10">
           <header className="mb-6">
-            <h1 className="text-white/90 text-2xl sm:text-3xl font-semibold tracking-tight">Funciones Ejecutivas — TMT</h1>
-            <p className="text-white/70 text-sm sm:text-base mt-1 max-w-2xl">
-              Prueba de conexión secuencial de estímulos visuales. Realice TMT-A y, a continuación, TMT-A+B.
+            <h1 className="text-slate-900 text-2xl sm:text-3xl font-semibold tracking-tight">Funciones ejecutivas — TMT</h1>
+            <p className="text-slate-600 text-sm sm:text-base mt-1 max-w-2xl">
+              Conecta los estímulos en secuencia. Primero TMT-A y, a continuación, TMT-A+B.
             </p>
           </header>
 
-          <Card className={`${styles.card} shadow-xl`}>
+          <Card className={styles.card}>
             <CardHeader className="pb-2">
               <CardTitle className="text-lg sm:text-xl lg:text-2xl text-slate-900">Instrucciones</CardTitle>
             </CardHeader>
             <CardContent className="space-y-5">
               <div className="rounded-lg bg-slate-50 p-4 sm:p-5 border border-slate-200">
-                <h4 className="font-semibold text-slate-900 mb-3 text-sm sm:text-base">¿Qué debe hacer?</h4>
                 <ul className="space-y-2 text-slate-700 text-sm sm:text-base">
-                  <li>• <strong>TMT-A:</strong> Conecte los números haciendo clic en orden (1→2→3…)</li>
-                  <li>• <strong>TMT-A+B:</strong> Alterne número y letra (1→A→2→B…)</li>
-                  <li>• Las líneas entre puntos se generan de forma automática.</li>
-                  <li>• Trabaje lo más rápido posible evitando errores.</li>
+                  <li>• <strong>TMT-A:</strong> haga clic 1→2→3…</li>
+                  <li>• <strong>TMT-A+B:</strong> alterne número y letra (1→A→2→B…)</li>
+                  <li>• Las líneas se dibujan automáticamente.</li>
+                  <li>• Priorice rapidez con precisión.</li>
                 </ul>
               </div>
               <div className="flex justify-end gap-3">
-                {onPause && (
-                  <Button variant="outline" onClick={onPause} className={styles.outline}>Pausar</Button>
-                )}
+                {onPause && <Button variant="outline" onClick={onPause} className={styles.outline}>Pausar</Button>}
                 <Button onClick={startSubtest} className={styles.primary} size="lg">Comenzar</Button>
               </div>
             </CardContent>
           </Card>
-        </div>
-      </div>
+        </section>
+      </main>
     )
   }
 
   if (phase === "tmt-a" || phase === "tmt-b") {
     const isA = phase === "tmt-a"
-    const title = isA ? "TMT-A: Conecte los números" : "TMT-A+B: Alterne números y letras"
+    const title = isA ? "TMT-A: conecte los números" : "TMT-A+B: alterne números y letras"
+    const expected = (isA ? TMT_A_SEQUENCE : TMT_B_SEQUENCE)[currentSequenceIndex] ?? "—"
 
     return (
-      <div className={`min-h-[70vh] w-full ${styles.backdrop} py-6 px-4`}>
-        <div className="mx-auto max-w-5xl">
-          {/* Barra superior con KPIs */}
-          <Card className={`${styles.card} shadow-lg mb-3`}>
+      <main className={styles.shell}>
+        <section className="mx-auto max-w-5xl px-4 py-6">
+          {/* KPIs */}
+          <Card className={`${styles.card} mb-3`}>
             <CardContent className="p-3 sm:p-4">
-              <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center gap-4">
                 <div>
                   <p className={`${styles.kpiLabel} text-xs sm:text-sm`}>Fase</p>
                   <p className="font-semibold text-slate-900">{isA ? "TMT-A" : "TMT-A+B"}</p>
                 </div>
                 <div>
                   <p className={`${styles.kpiLabel} text-xs sm:text-sm`}>Ítem esperado</p>
-                  <p className="font-mono text-sm sm:text-base text-slate-900">{
-                    (isA ? TMT_A_SEQUENCE : TMT_B_SEQUENCE)[currentSequenceIndex] ?? "—"
-                  }</p>
+                  <Badge variant="secondary" className="font-mono">{expected}</Badge>
                 </div>
                 <div>
                   <p className={`${styles.kpiLabel} text-xs sm:text-sm`}>Errores</p>
-                  <p className={`font-semibold ${errors > 0 ? "text-rose-600" : styles.kpiValue}`}>{errors}</p>
+                  <p className={`font-semibold ${errors ? "text-rose-600" : styles.kpiValue}`}>{errors}</p>
                 </div>
                 <div>
                   <p className={`${styles.kpiLabel} text-xs sm:text-sm`}>Correcciones</p>
                   <p className={styles.kpiValue}>{corrections}</p>
                 </div>
                 <div className="ml-auto">
-                  {onPause && (
-                    <Button variant="outline" onClick={onPause} className={styles.outline}>Pausar</Button>
-                  )}
+                  {onPause && <Button variant="outline" onClick={onPause} className={styles.outline}>Pausar</Button>}
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className={`${styles.card} shadow-xl`}>
+          {/* Tablero responsivo */}
+          <Card className={styles.card}>
             <CardHeader>
               <CardTitle className="flex items-center justify-between text-slate-900">
                 <span>{title}</span>
@@ -307,81 +296,101 @@ export function ExecutiveFunctionSubtest(
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="relative mx-auto rounded-lg bg-slate-50 border border-slate-200 shadow-sm" style={{ height: "500px", width: "600px" }}>
-                <svg width="600" height="500" className="absolute inset-0">
-                  {/* líneas entre nodos ya conectados */}
-                  {nodes.map((node, index) => {
-                    if (node.isConnected && index < nodes.length - 1) {
-                      const next = nodes.find(n => n.order === node.order + 1 && n.isConnected)
-                      if (next) {
-                        return (
-                          <line
-                            key={`line-${node.id}`}
-                            x1={node.x + 25} y1={node.y + 25}
-                            x2={next.x + 25} y2={next.y + 25}
-                            stroke="#0E7C86" strokeWidth="3" strokeLinecap="round"
-                          />
-                        )
-                      }
+              <div className="relative mx-auto rounded-lg bg-slate-50 border border-slate-200 shadow-sm w-full max-w-[900px] aspect-[6/5]">
+                {/* SVG responsive con viewBox a 600x500 para escalar posiciones */}
+                <svg viewBox="0 0 600 500" className="absolute inset-0 h-full w-full">
+                  {/* rejilla sutil para orientación espacial */}
+                  <defs>
+                    <pattern id="grid" width="50" height="50" patternUnits="userSpaceOnUse">
+                      <path d="M 50 0 L 0 0 0 50" fill="none" stroke="rgba(8,53,84,0.08)" strokeWidth="1" />
+                    </pattern>
+                  </defs>
+                  <rect width="600" height="500" fill="url(#grid)" />
+
+                  {/* líneas conectadas */}
+                  {nodes.map((node) => {
+                    const next = nodes.find(n => n.order === node.order + 1 && n.isConnected)
+                    if (node.isConnected && next) {
+                      return (
+                        <line
+                          key={`line-${node.id}`}
+                          x1={node.x + 25} y1={node.y + 25}
+                          x2={next.x + 25} y2={next.y + 25}
+                          stroke="#0E7C86" strokeWidth="4" strokeLinecap="round"
+                        />
+                      )
                     }
                     return null
                   })}
 
-                  {/* nodos */}
-                  {nodes.map(node => (
-                    <g key={node.id}>
-                      <circle
-                        cx={node.x + 25} cy={node.y + 25} r="25"
-                        fill={node.isConnected ? "#10B981" : "#E5E7EB"}
-                        stroke="#6B7280" strokeWidth="2"
-                        className="cursor-pointer hover:opacity-90 transition"
+                  {/* Nodos (SIN resaltar el siguiente correcto) */}
+                  {nodes.map(node => {
+                    // Sólo dos estados visuales: conectado (verde) o pendiente (gris).
+                    const fill = node.isConnected ? "#10B981" : "#E5E7EB"
+                    const stroke = node.isConnected ? "#0E7C86" : "#6B7280"
+                    const textColor = node.isConnected ? "white" : "#0f172a"
+                    return (
+                      <g
+                        key={node.id}
+                        role="button"
+                        tabIndex={0}
+                        aria-label={`Nodo ${node.value}`}
                         onClick={() => handleNodeClick(node)}
-                      />
-                      <text
-                        x={node.x + 25} y={node.y + 30}
-                        textAnchor="middle"
-                        className="text-sm font-bold pointer-events-none select-none"
-                        fill={node.isConnected ? "white" : "#0f172a"}
+                        onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && handleNodeClick(node)}
+                        className="cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-50 rounded-full"
                       >
-                        {node.value}
-                      </text>
-                    </g>
-                  ))}
+                        <circle
+                          cx={node.x + 25} cy={node.y + 25} r="25"
+                          fill={fill}
+                          stroke={stroke}
+                          strokeWidth={2}
+                        />
+                        <text
+                          x={node.x + 25} y={node.y + 30}
+                          textAnchor="middle"
+                          className="text-sm font-bold pointer-events-none select-none"
+                          fill={textColor}
+                        >
+                          {node.value}
+                        </text>
+                      </g>
+                    )
+                  })}
                 </svg>
               </div>
 
               <div className="flex justify-between items-center mt-4">
                 <div className="text-sm text-slate-600">Fase: {isA ? "TMT-A" : "TMT-A+B"}</div>
                 <div className="flex gap-3">
-                  {onPause && (
-                    <Button variant="outline" onClick={onPause} className={styles.outline}>Pausar</Button>
-                  )}
+                  {onPause && <Button variant="outline" onClick={onPause} className={styles.outline}>Pausar</Button>}
                 </div>
               </div>
             </CardContent>
           </Card>
-        </div>
-      </div>
+        </section>
+      </main>
     )
   }
 
   return (
-    <div className={`${styles.backdrop} min-h-[60vh] py-8 px-4`}>
-      <div className="mx-auto max-w-4xl">
-        <Card className={`${styles.card} shadow-xl`}>
+    <main className={styles.shell}>
+      <section className="mx-auto max-w-4xl px-4 py-8">
+        <Card className={styles.card}>
           <CardHeader>
-            <CardTitle className="text-slate-900">Funciones Ejecutivas (TMT) — Completado</CardTitle>
+            <CardTitle className="text-slate-900">Funciones ejecutivas (TMT) — Completado</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 text-sm grid grid-cols-1 sm:grid-cols-2 gap-4 text-slate-800">
-              <div><strong>TMT-A tiempo:</strong> {Math.round(tmtATime / 1000)}s</div>
+              <div><strong>TMT-A tiempo:</strong> {Math.round(tmtATime / 1000)} s</div>
               <div><strong>TMT-A errores:</strong> {tmtAErrors}</div>
-              <div><strong>TMT-A+B tiempo:</strong> {Math.round(tmtBTime / 1000)}s</div>
+              <div><strong>TMT-A+B tiempo:</strong> {Math.round(tmtBTime / 1000)} s</div>
               <div><strong>TMT-A+B errores:</strong> {tmtBErrors}</div>
             </div>
           </CardContent>
         </Card>
-      </div>
-    </div>
+      </section>
+    </main>
   )
 }
+
+export default ExecutiveFunctionSubtest

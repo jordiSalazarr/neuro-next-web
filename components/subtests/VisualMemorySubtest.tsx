@@ -1,390 +1,357 @@
-"use client"
+"use client";
 
-import { useState, useEffect, useRef, useCallback } from "react"
-import axios from "axios"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Progress } from "@/components/ui/progress"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import type { SubtestProps, SubtestResult } from "@/types"
-import { useEvaluationStore } from "@/src/stores/evaluation"
+import { useState, useEffect, useRef, useCallback } from "react";
+import axios from "axios";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import type { SubtestProps, SubtestResult } from "@/types";
+import { useEvaluationStore } from "@/src/stores/evaluation";
 
 // ================== Types ==================
-
-type ShapeType = "circle" | "square" | "triangle"
-
-interface Shape {
-  id: number
-  type: ShapeType
-  x: number
-  y: number
-  size: number
-  color: string
-}
-
+type ShapeType = "circle" | "square" | "triangle";
+interface Shape { id: number; type: ShapeType; x: number; y: number; size: number; color: string }
 interface DrawingPoint { x: number; y: number }
-interface DrawingStroke {
-  points: DrawingPoint[]
-  timestamp: number
-  order: number
-}
-
-type Phase = "instructions" | "study" | "recall" | "evaluation" | "completed"
-
+interface DrawingStroke { points: DrawingPoint[]; timestamp: number; order: number }
+type Phase = "instructions" | "study" | "recall" | "evaluation" | "completed";
 interface VisualMemorySubtestProps extends SubtestProps {
-  /** Base URL del backend; si no se pasa, se usa NEXT_PUBLIC_API_BASE_URL */
-  apiBaseUrl?: string
-  /** Ruta relativa del endpoint; por defecto "/visual-memory-subtest" */
-  endpointPath?: string
+  apiBaseUrl?: string;
+  endpointPath?: string;
 }
 
 // ================== Consts ==================
-
 const SHAPES: Shape[] = [
   { id: 1, type: "circle", x: 100, y: 100, size: 60, color: "#3B82F6" },
   { id: 2, type: "square", x: 250, y: 150, size: 50, color: "#EF4444" },
   { id: 3, type: "triangle", x: 150, y: 250, size: 55, color: "#10B981" },
-]
+];
 
-const DISPLAY_TIME = 10 // segundos para memorizar
-const CANVAS_CSS_WIDTH = 400
-const CANVAS_CSS_HEIGHT = 350
+const DISPLAY_TIME = 10; // s para memorizar
+const CANVAS_CSS_WIDTH = 400;
+const CANVAS_CSS_HEIGHT = 350;
 
 // ================== UI Tokens ==================
-
 const styles = {
-  backdrop: "bg-[#0E2F3C]", // azul corporativo clínico
-  card: "bg-white/80 backdrop-blur border-slate-200",
-  primary: "bg-[#0E7C86] hover:bg-[#0a646c] text-white",
+  shell: "min-h-[calc(100vh-56px)]",
+  card: "bg-white/85 backdrop-blur border border-slate-200/70 shadow-xl rounded-2xl",
+  primary: "bg-brand-600 hover:bg-slate-900 text-white",
   outline: "border-slate-300 text-slate-800 hover:bg-slate-50",
   kpiLabel: "text-slate-500",
-  kpiValue: "text-slate-900",
-}
+};
 
 // ================== Component ==================
-
 export function VisualMemorySubtest({
   onComplete,
   onPause,
   apiBaseUrl,
   endpointPath = "/v1/evaluations/visual-memory",
 }: VisualMemorySubtestProps) {
-  const [phase, setPhase] = useState<Phase>("instructions")
-  const [studyTimeRemaining, setStudyTimeRemaining] = useState(DISPLAY_TIME)
+  const [phase, setPhase] = useState<Phase>("instructions");
+  const [studyTimeRemaining, setStudyTimeRemaining] = useState(DISPLAY_TIME);
 
-  const [isDrawing, setIsDrawing] = useState(false)
-  const [strokes, setStrokes] = useState<DrawingStroke[]>([])
-  const [currentStroke, setCurrentStroke] = useState<DrawingPoint[]>([])
-  const [strokeOrder, setStrokeOrder] = useState(0)
-  const [activePointerId, setActivePointerId] = useState<number | null>(null)
-  const [usePressure, setUsePressure] = useState<boolean>(false) // opcional: escalado por presión
-  const currentEvaluationId = useEvaluationStore((state) => state.currentEvaluation?.id)
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [strokes, setStrokes] = useState<DrawingStroke[]>([]);
+  const [currentStroke, setCurrentStroke] = useState<DrawingPoint[]>([]);
+  const [strokeOrder, setStrokeOrder] = useState(0);
+  const [activePointerId, setActivePointerId] = useState<number | null>(null);
+  const [usePressure, setUsePressure] = useState<boolean>(false);
 
-  const [score, setScore] = useState<string>("") // "0" | "1" | "2"
-  const [note, setNote] = useState("")
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [errorMsg, setErrorMsg] = useState<string | null>(null)
+  const currentEvaluationId = useEvaluationStore((s) => s.currentEvaluation?.id);
+
+  const [score, setScore] = useState<string>(""); // "0" | "1" | "2"
+  const [note, setNote] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   // Canvas refs
-  const studyCanvasRef = useRef<HTMLCanvasElement>(null) // para fase de estudio
-  const drawCanvasRef = useRef<HTMLCanvasElement>(null) // dibujo del paciente (recall/evaluation)
-  const originalCanvasRef = useRef<HTMLCanvasElement>(null) // figura original en evaluación
+  const studyCanvasRef = useRef<HTMLCanvasElement>(null);
+  const drawCanvasRef = useRef<HTMLCanvasElement>(null);
+  const originalCanvasRef = useRef<HTMLCanvasElement>(null);
 
   // ================== Canvas DPR helpers ==================
-
   const setupCanvas = useCallback((canvas: HTMLCanvasElement | null) => {
-    if (!canvas) return
-    const dpr = typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1
-    // set the CSS pixel size
-    canvas.style.width = `${CANVAS_CSS_WIDTH}px`
-    canvas.style.height = `${CANVAS_CSS_HEIGHT}px`
-    // set the backing store size
-    canvas.width = Math.floor(CANVAS_CSS_WIDTH * dpr)
-    canvas.height = Math.floor(CANVAS_CSS_HEIGHT * dpr)
-    const ctx = canvas.getContext("2d")
-    if (!ctx) return
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0) // scale so we can draw in CSS pixels
-    ctx.lineCap = "round"
-    ctx.lineJoin = "round"
-  }, [])
+    if (!canvas) return;
+    const dpr = typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1;
+    canvas.style.width = `${CANVAS_CSS_WIDTH}px`;
+    canvas.style.height = `${CANVAS_CSS_HEIGHT}px`;
+    canvas.width = Math.floor(CANVAS_CSS_WIDTH * dpr);
+    canvas.height = Math.floor(CANVAS_CSS_HEIGHT * dpr);
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+  }, []);
 
   const getRelativePoint = useCallback((canvas: HTMLCanvasElement, e: PointerEvent | React.PointerEvent) => {
-    const rect = canvas.getBoundingClientRect()
-    return { x: e.clientX - rect.left, y: e.clientY - rect.top }
-  }, [])
+    const rect = canvas.getBoundingClientRect();
+    return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+  }, []);
 
   // ================== Draw originals ==================
-
   const drawOriginalShapes = useCallback((canvas: HTMLCanvasElement | null) => {
-    if (!canvas) return
-    const ctx = canvas.getContext("2d")
-    if (!ctx) return
-    ctx.clearRect(0, 0, CANVAS_CSS_WIDTH, CANVAS_CSS_HEIGHT)
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.clearRect(0, 0, CANVAS_CSS_WIDTH, CANVAS_CSS_HEIGHT);
+
+    // Fondo de guía suave para mejorar orientación espacial (no interfiere)
+    ctx.save();
+    ctx.strokeStyle = "rgba(8,53,84,0.08)";
+    ctx.lineWidth = 1;
+    for (let x = 50; x < CANVAS_CSS_WIDTH; x += 50) {
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, CANVAS_CSS_HEIGHT); ctx.stroke();
+    }
+    for (let y = 50; y < CANVAS_CSS_HEIGHT; y += 50) {
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(CANVAS_CSS_WIDTH, y); ctx.stroke();
+    }
+    ctx.restore();
+
     SHAPES.forEach((shape) => {
-      ctx.fillStyle = shape.color
-      ctx.strokeStyle = "#000"
-      ctx.lineWidth = 2
+      ctx.fillStyle = shape.color;
+      ctx.strokeStyle = "#000";
+      ctx.lineWidth = 2;
       switch (shape.type) {
         case "circle":
-          ctx.beginPath()
-          ctx.arc(shape.x, shape.y, shape.size / 2, 0, 2 * Math.PI)
-          ctx.fill()
-          ctx.stroke()
-          break
+          ctx.beginPath();
+          ctx.arc(shape.x, shape.y, shape.size / 2, 0, 2 * Math.PI);
+          ctx.fill(); ctx.stroke();
+          break;
         case "square":
-          ctx.fillRect(shape.x - shape.size / 2, shape.y - shape.size / 2, shape.size, shape.size)
-          ctx.strokeRect(shape.x - shape.size / 2, shape.y - shape.size / 2, shape.size, shape.size)
-          break
+          ctx.fillRect(shape.x - shape.size / 2, shape.y - shape.size / 2, shape.size, shape.size);
+          ctx.strokeRect(shape.x - shape.size / 2, shape.y - shape.size / 2, shape.size, shape.size);
+          break;
         case "triangle":
-          ctx.beginPath()
-          ctx.moveTo(shape.x, shape.y - shape.size / 2)
-          ctx.lineTo(shape.x - shape.size / 2, shape.y + shape.size / 2)
-          ctx.lineTo(shape.x + shape.size / 2, shape.y + shape.size / 2)
-          ctx.closePath()
-          ctx.fill()
-          ctx.stroke()
-          break
+          ctx.beginPath();
+          ctx.moveTo(shape.x, shape.y - shape.size / 2);
+          ctx.lineTo(shape.x - shape.size / 2, shape.y + shape.size / 2);
+          ctx.lineTo(shape.x + shape.size / 2, shape.y + shape.size / 2);
+          ctx.closePath();
+          ctx.fill(); ctx.stroke();
+          break;
       }
-    })
-  }, [])
+    });
+  }, []);
 
   // ================== Timers/Phases ==================
-
   useEffect(() => {
-    if (phase !== "study") return
+    if (phase !== "study") return;
     const interval = setInterval(() => {
       setStudyTimeRemaining((prev) => {
         if (prev <= 1) {
-          setPhase("recall")
-          return 0
+          setPhase("recall");
+          return 0;
         }
-        return prev - 1
-      })
-    }, 1000)
-    return () => clearInterval(interval)
-  }, [phase])
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [phase]);
 
   // draw originals during study
   useEffect(() => {
     if (phase === "study") {
-      setupCanvas(studyCanvasRef.current)
-      drawOriginalShapes(studyCanvasRef.current)
+      setupCanvas(studyCanvasRef.current);
+      drawOriginalShapes(studyCanvasRef.current);
     }
-  }, [phase, studyTimeRemaining, drawOriginalShapes, setupCanvas])
+  }, [phase, studyTimeRemaining, drawOriginalShapes, setupCanvas]);
 
   // draw originals during evaluation
   useEffect(() => {
     if (phase === "evaluation") {
-      setupCanvas(originalCanvasRef.current)
-      drawOriginalShapes(originalCanvasRef.current)
+      setupCanvas(originalCanvasRef.current);
+      drawOriginalShapes(originalCanvasRef.current);
     }
-  }, [phase, drawOriginalShapes, setupCanvas])
+  }, [phase, drawOriginalShapes, setupCanvas]);
 
   // keep drawing canvas prepared whenever recall/evaluation
   useEffect(() => {
     if (phase === "recall" || phase === "evaluation") {
-      setupCanvas(drawCanvasRef.current)
-      repaintPatientDrawing()
+      setupCanvas(drawCanvasRef.current);
+      repaintPatientDrawing();
     }
-  }, [phase, setupCanvas])
+  }, [phase, setupCanvas]);
 
-  // handle window DPR/resize changes for active canvases
+  // handle window DPR/resize
   useEffect(() => {
     const handle = () => {
-      ;[studyCanvasRef.current, drawCanvasRef.current, originalCanvasRef.current].forEach((c) => {
-        if (c) setupCanvas(c)
-      })
-      if (phase === "study") drawOriginalShapes(studyCanvasRef.current)
-      if (phase === "evaluation") drawOriginalShapes(originalCanvasRef.current)
-      if (phase === "recall" || phase === "evaluation") repaintPatientDrawing()
-    }
-    window.addEventListener("resize", handle)
-    return () => window.removeEventListener("resize", handle)
-  }, [phase, setupCanvas, drawOriginalShapes])
+      [studyCanvasRef.current, drawCanvasRef.current, originalCanvasRef.current].forEach((c) => c && setupCanvas(c));
+      if (phase === "study") drawOriginalShapes(studyCanvasRef.current);
+      if (phase === "evaluation") drawOriginalShapes(originalCanvasRef.current);
+      if (phase === "recall" || phase === "evaluation") repaintPatientDrawing();
+    };
+    window.addEventListener("resize", handle);
+    return () => window.removeEventListener("resize", handle);
+  }, [phase, setupCanvas, drawOriginalShapes]);
 
   // ================== Patient drawing repaint ==================
-
   const repaintPatientDrawing = useCallback(() => {
-    const canvas = drawCanvasRef.current
-    if (!canvas) return
-    const ctx = canvas.getContext("2d")
-    if (!ctx) return
-    ctx.clearRect(0, 0, CANVAS_CSS_WIDTH, CANVAS_CSS_HEIGHT)
+    const canvas = drawCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.clearRect(0, 0, CANVAS_CSS_WIDTH, CANVAS_CSS_HEIGHT);
+
+    // guía suave
+    ctx.save();
+    ctx.strokeStyle = "rgba(8,53,84,0.06)";
+    ctx.lineWidth = 1;
+    for (let x = 50; x < CANVAS_CSS_WIDTH; x += 50) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, CANVAS_CSS_HEIGHT); ctx.stroke(); }
+    for (let y = 50; y < CANVAS_CSS_HEIGHT; y += 50) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(CANVAS_CSS_WIDTH, y); ctx.stroke(); }
+    ctx.restore();
 
     // saved strokes
     strokes.forEach((stroke) => {
       if (stroke.points.length > 1) {
-        ctx.strokeStyle = "#0f172a" // slate-900
-        ctx.lineWidth = 2
-        ctx.beginPath()
-        ctx.moveTo(stroke.points[0].x, stroke.points[0].y)
-        stroke.points.forEach((p) => ctx.lineTo(p.x, p.y))
-        ctx.stroke()
+        ctx.strokeStyle = "#0f172a"; // slate-900
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
+        stroke.points.forEach((p) => ctx.lineTo(p.x, p.y));
+        ctx.stroke();
       }
-    })
+    });
 
-    // current stroke (feedback sutil)
+    // current stroke (feedback)
     if (currentStroke.length > 1) {
-      ctx.strokeStyle = "#0E7C86"
-      ctx.lineWidth = 2
-      ctx.beginPath()
-      ctx.moveTo(currentStroke[0].x, currentStroke[0].y)
-      currentStroke.forEach((p) => ctx.lineTo(p.x, p.y))
-      ctx.stroke()
+      ctx.strokeStyle = "#0B6B8A";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(currentStroke[0].x, currentStroke[0].y);
+      currentStroke.forEach((p) => ctx.lineTo(p.x, p.y));
+      ctx.stroke();
     }
-  }, [strokes, currentStroke])
+  }, [strokes, currentStroke]);
 
   useEffect(() => {
-    if (phase === "recall" || phase === "evaluation") repaintPatientDrawing()
-  }, [phase, strokes, currentStroke, repaintPatientDrawing])
+    if (phase === "recall" || phase === "evaluation") repaintPatientDrawing();
+  }, [phase, strokes, currentStroke, repaintPatientDrawing]);
 
-  // ================== Pointer-based drawing (mouse, touch, stylus) ==================
-
+  // ================== Pointer-based drawing ==================
   const beginStroke = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
-    if (phase !== "recall") return
-    const canvas = drawCanvasRef.current
-    if (!canvas) return
+    if (phase !== "recall") return;
+    const canvas = drawCanvasRef.current;
+    if (!canvas) return;
+    if (activePointerId !== null && activePointerId !== e.pointerId) return;
 
-    // lock to a single pointer (prevents multi-touch from interfering)
-    if (activePointerId !== null && activePointerId !== e.pointerId) return
+    canvas.setPointerCapture?.(e.pointerId);
+    setActivePointerId(e.pointerId);
+    setIsDrawing(true);
 
-    canvas.setPointerCapture?.(e.pointerId)
-    setActivePointerId(e.pointerId)
-    setIsDrawing(true)
-
-    const p = getRelativePoint(canvas, e)
-    setCurrentStroke([{ x: p.x, y: p.y }])
-  }, [phase, activePointerId, getRelativePoint])
+    const p = getRelativePoint(canvas, e);
+    setCurrentStroke([{ x: p.x, y: p.y }]);
+  }, [phase, activePointerId, getRelativePoint]);
 
   const moveStroke = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
-    if (!isDrawing || phase !== "recall") return
-    const canvas = drawCanvasRef.current
-    if (!canvas) return
+    if (!isDrawing || phase !== "recall") return;
+    const canvas = drawCanvasRef.current;
+    if (!canvas) return;
+    if (activePointerId !== null && activePointerId !== e.pointerId) return;
 
-    if (activePointerId !== null && activePointerId !== e.pointerId) return
+    const p = getRelativePoint(canvas, e);
+    const pressure = usePressure ? e.pressure || 0.5 : 0;
+    if (pressure) { /* potencial anchura por presión si se quisiera */ }
 
-    const p = getRelativePoint(canvas, e)
-
-    // Optional: preview de presión
-    const pressure = usePressure ? e.pressure || 0.5 : 0
-    if (pressure) {
-      // (Puedes extender DrawingPoint para almacenar grosor si lo necesitas)
-    }
-
-    setCurrentStroke((prev) => [...prev, { x: p.x, y: p.y }])
-  }, [isDrawing, phase, activePointerId, getRelativePoint, usePressure])
+    setCurrentStroke((prev) => [...prev, { x: p.x, y: p.y }]);
+  }, [isDrawing, phase, activePointerId, getRelativePoint, usePressure]);
 
   const endStroke = useCallback((e?: React.PointerEvent<HTMLCanvasElement>) => {
-    if (!isDrawing) return
-    if (e && activePointerId !== null && e.pointerId !== activePointerId) return
+    if (!isDrawing) return;
+    if (e && activePointerId !== null && e.pointerId !== activePointerId) return;
 
-    setIsDrawing(false)
-    setActivePointerId(null)
+    setIsDrawing(false);
+    setActivePointerId(null);
     if (currentStroke.length > 1) {
-      setStrokes((prev) => [...prev, { points: currentStroke, timestamp: Date.now(), order: strokeOrder }])
-      setStrokeOrder((prev) => prev + 1)
+      setStrokes((prev) => [...prev, { points: currentStroke, timestamp: Date.now(), order: strokeOrder }]);
+      setStrokeOrder((prev) => prev + 1);
     }
-    setCurrentStroke([])
-  }, [isDrawing, currentStroke, strokeOrder, activePointerId])
+    setCurrentStroke([]);
+  }, [isDrawing, currentStroke, strokeOrder, activePointerId]);
 
   // ================== Utilities ==================
-
   const clearCanvas = () => {
-    setStrokes([])
-    setCurrentStroke([])
-    setStrokeOrder(0)
-    requestAnimationFrame(() => repaintPatientDrawing())
-  }
+    setStrokes([]);
+    setCurrentStroke([]);
+    setStrokeOrder(0);
+    requestAnimationFrame(() => repaintPatientDrawing());
+  };
 
   // ================== Flow ==================
-
   const startSubtest = () => {
-    setErrorMsg(null)
-    setScore("")
-    setNote("")
-    setStrokes([])
-    setCurrentStroke([])
-    setStrokeOrder(0)
-    setStudyTimeRemaining(DISPLAY_TIME)
-    setPhase("study")
-  }
+    setErrorMsg(null);
+    setScore("");
+    setNote("");
+    setStrokes([]);
+    setCurrentStroke([]);
+    setStrokeOrder(0);
+    setStudyTimeRemaining(DISPLAY_TIME);
+    setPhase("study");
+  };
 
-  const goToEvaluation = () => {
-    setPhase("evaluation")
-  }
+  const goToEvaluation = () => setPhase("evaluation");
 
   // ================== Submit ==================
-
   const submitEvaluation = async () => {
-    setErrorMsg(null)
+    setErrorMsg(null);
     if (!currentEvaluationId) {
-      setErrorMsg("Falta evaluationId para poder enviar al backend.")
-      return
+      setErrorMsg("Falta evaluationId para poder enviar al backend.");
+      return;
     }
     if (score === "") {
-      setErrorMsg("Seleccione una puntuación (0–2).")
-      return
+      setErrorMsg("Seleccione una puntuación (0–2).");
+      return;
     }
 
-    const baseURL = apiBaseUrl ?? process.env.NEXT_PUBLIC_API_BASE_URL
+    const baseURL = apiBaseUrl ?? process.env.NEXT_PUBLIC_API_BASE_URL;
     if (!baseURL) {
-      setErrorMsg("No se ha configurado la URL del backend (apiBaseUrl o NEXT_PUBLIC_API_BASE_URL).")
-      return
+      setErrorMsg("No se ha configurado la URL del backend (apiBaseUrl o NEXT_PUBLIC_API_BASE_URL).");
+      return;
     }
 
     const payload = {
       evaluation_id: currentEvaluationId,
       score_id: Number(score),
       note: note?.trim() ?? "",
-    }
+    };
 
     try {
-      setIsSubmitting(true)
-      await axios.post(`${baseURL}${endpointPath}`, payload, {
-        headers: { "Content-Type": "application/json" },
-      })
-      setPhase("completed")
-
-      const apiPayload = {
-        evaluation_id: currentEvaluationId,
-        score_id: Number(score),
-        note: note?.trim() ?? "",
-      }
+      setIsSubmitting(true);
+      await axios.post(`${baseURL}${endpointPath}`, payload, { headers: { "Content-Type": "application/json" } });
+      setPhase("completed");
 
       const subtestResult: Omit<SubtestResult, "subtestId" | "name"> = {
         startTime: new Date(),
-        score: apiPayload.score_id,
+        score: payload.score_id,
         errors: 0,
         timeSpent: 0,
-        rawData: apiPayload,
-      }
-
-      onComplete?.(subtestResult)
+        rawData: payload,
+      };
+      onComplete?.(subtestResult);
     } catch (err: any) {
-      const msg = err?.response?.data?.message || err?.message || "No se pudo enviar la evaluación. Inténtelo de nuevo."
-      setErrorMsg(msg)
+      const msg = err?.response?.data?.message || err?.message || "No se pudo enviar la evaluación. Inténtelo de nuevo.";
+      setErrorMsg(msg);
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
-  }
+  };
 
   // ================== Render ==================
-
   if (phase === "instructions") {
     return (
-      <div className={`min-h-[70vh] w-full ${styles.backdrop} py-8 sm:py-10 px-4`}>
-        <div className="mx-auto max-w-4xl">
+      <main className={styles.shell}>
+        <section className="mx-auto max-w-4xl px-4 py-8 sm:py-10">
           <header className="mb-6">
-            <h1 className="text-white/90 text-2xl sm:text-3xl font-semibold tracking-tight">Memoria Visual</h1>
-            <p className="text-white/70 text-sm sm:text-base mt-1 max-w-2xl">
+            <h1 className="text-slate-900 text-2xl sm:text-3xl font-semibold tracking-tight">Memoria visual</h1>
+            <p className="text-slate-600 text-sm sm:text-base mt-1 max-w-2xl">
               Verá tres figuras durante 10 segundos. Memorice forma, tamaño y posición; después deberá reproducirlas.
             </p>
           </header>
 
-          <Card className={`${styles.card} shadow-xl`}>
+          <Card className={styles.card}>
             <CardHeader className="pb-2">
               <CardTitle className="text-lg sm:text-xl lg:text-2xl text-slate-900">Instrucciones</CardTitle>
             </CardHeader>
@@ -398,23 +365,21 @@ export function VisualMemorySubtest({
                 </ul>
               </div>
               <div className="flex justify-end gap-3">
-                {onPause && (
-                  <Button variant="outline" onClick={onPause} className={styles.outline}>Pausar</Button>
-                )}
+                {onPause && <Button variant="outline" onClick={onPause} className={styles.outline}>Pausar</Button>}
                 <Button size="lg" className={styles.primary} onClick={startSubtest}>Comenzar</Button>
               </div>
             </CardContent>
           </Card>
-        </div>
-      </div>
-    )
+        </section>
+      </main>
+    );
   }
 
   if (phase === "study") {
     return (
-      <div className={`min-h-[60vh] w-full ${styles.backdrop} py-6 px-4`}>
-        <div className="mx-auto max-w-4xl">
-          <Card className={`${styles.card} shadow-xl`}>
+      <main className={styles.shell}>
+        <section className="mx-auto max-w-4xl px-4 py-6">
+          <Card className={styles.card}>
             <CardHeader>
               <CardTitle className="flex items-center justify-between text-slate-900">
                 <span>Memorice las figuras</span>
@@ -430,21 +395,22 @@ export function VisualMemorySubtest({
                   ref={studyCanvasRef}
                   className="border border-slate-300 rounded-lg bg-white select-none shadow-sm"
                   style={{ touchAction: "none", width: CANVAS_CSS_WIDTH, height: CANVAS_CSS_HEIGHT }}
+                  aria-label="Lienzo de estudio con figuras"
                   onContextMenu={(e) => e.preventDefault()}
                 />
               </div>
             </CardContent>
           </Card>
-        </div>
-      </div>
-    )
+        </section>
+      </main>
+    );
   }
 
   if (phase === "recall") {
     return (
-      <div className={`min-h-[70vh] w-full ${styles.backdrop} py-8 px-4`}>
-        <div className="mx-auto max-w-4xl">
-          <Card className={`${styles.card} shadow-xl`}>
+      <main className={styles.shell}>
+        <section className="mx-auto max-w-4xl px-4 py-8">
+          <Card className={styles.card}>
             <CardHeader>
               <CardTitle className="flex items-center justify-between text-slate-900">
                 <span>Dibuje las figuras</span>
@@ -468,34 +434,35 @@ export function VisualMemorySubtest({
                   onPointerUp={endStroke}
                   onPointerCancel={endStroke}
                   onPointerLeave={endStroke}
+                  aria-label="Lienzo para dibujar las figuras recordadas"
                   onContextMenu={(e) => e.preventDefault()}
                 />
               </div>
               <p className="text-center text-slate-600 mb-4">Reproduzca las figuras en posiciones aproximadas.</p>
               <div className="flex justify-between">
-                {onPause && (
-                  <Button variant="outline" onClick={onPause} className={styles.outline}>Pausar</Button>
-                )}
-                <Button onClick={() => setPhase("evaluation")} className={styles.primary}>Ir a evaluación</Button>
+                {onPause && <Button variant="outline" onClick={onPause} className={styles.outline}>Pausar</Button>}
+                <Button onClick={goToEvaluation} className={styles.primary}>Ir a evaluación</Button>
               </div>
             </CardContent>
           </Card>
-        </div>
-      </div>
-    )
+        </section>
+      </main>
+    );
   }
 
   if (phase === "evaluation") {
     return (
-      <div className={`min-h-[70vh] w-full ${styles.backdrop} py-8 px-4`}>
-        <div className="mx-auto max-w-5xl">
-          <Card className={`${styles.card} shadow-xl`}>
+      <main className={styles.shell}>
+        <section className="mx-auto max-w-5xl px-4 py-8">
+          <Card className={styles.card}>
             <CardHeader>
               <CardTitle className="text-slate-900">Evaluación del dibujo</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               {errorMsg && (
-                <div className="rounded-md border border-rose-300 bg-rose-50 text-rose-800 p-3 text-sm">{errorMsg}</div>
+                <div role="alert" className="rounded-md border border-rose-300 bg-rose-50 text-rose-800 p-3 text-sm">
+                  {errorMsg}
+                </div>
               )}
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -505,6 +472,7 @@ export function VisualMemorySubtest({
                     ref={originalCanvasRef}
                     className="border border-slate-300 rounded-lg bg-white select-none shadow-sm"
                     style={{ touchAction: "none", width: CANVAS_CSS_WIDTH, height: CANVAS_CSS_HEIGHT }}
+                    aria-label="Lienzo con la figura original"
                     onContextMenu={(e) => e.preventDefault()}
                   />
                 </div>
@@ -514,6 +482,7 @@ export function VisualMemorySubtest({
                     ref={drawCanvasRef}
                     className="border border-slate-300 rounded-lg bg-white select-none shadow-sm"
                     style={{ touchAction: "none", width: CANVAS_CSS_WIDTH, height: CANVAS_CSS_HEIGHT }}
+                    aria-label="Lienzo con el dibujo del paciente"
                     onContextMenu={(e) => e.preventDefault()}
                   />
                 </div>
@@ -530,7 +499,7 @@ export function VisualMemorySubtest({
                     </DialogHeader>
                     <ul className="list-disc pl-6 space-y-2 text-slate-800">
                       <li>2 puntos → Forma y orientación correctas.</li>
-                      <li>1 punto → Parcialmente correcta (forma reconocible con algún error: tamaño/orientación/incompleta).</li>
+                      <li>1 punto → Parcialmente correcta (forma reconocible con error de tamaño/orientación o incompleta).</li>
                       <li>0 puntos → Incorrecta o irreconocible.</li>
                     </ul>
                   </DialogContent>
@@ -557,6 +526,7 @@ export function VisualMemorySubtest({
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
                 className="bg-slate-50 border-slate-300 focus-visible:ring-0 focus-visible:border-slate-400"
+                aria-label="Notas del evaluador"
               />
 
               <div className="flex justify-end gap-2">
@@ -567,24 +537,23 @@ export function VisualMemorySubtest({
               </div>
             </CardContent>
           </Card>
-        </div>
-      </div>
-    )
+        </section>
+      </main>
+    );
   }
 
   // completed
   return (
-    <div className={`${styles.backdrop} min-h-[60vh] py-8 px-4`}>
-      <div className="mx-auto max-w-3xl">
-        <Card className={`${styles.card} shadow-xl`}>
+    <main className={styles.shell}>
+      <section className="mx-auto max-w-3xl px-4 py-8">
+        <Card className={styles.card}>
           <CardHeader>
             <CardTitle className="text-slate-900">Test completado</CardTitle>
           </CardHeader>
-          <CardContent>
-            <p className="text-slate-700">La evaluación se ha enviado correctamente.</p>
-          </CardContent>
         </Card>
-      </div>
-    </div>
-  )
+      </section>
+    </main>
+  );
 }
+
+export default VisualMemorySubtest;

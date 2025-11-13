@@ -37,6 +37,20 @@
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
     --radius: 0.5rem;
+     --brand-50:  #F0F8FB;
+  --brand-100: #D9EEF6;
+  --brand-200: #B7DEEC;
+  --brand-300: #86C7DE;
+  --brand-400: #4EA9CA;
+  --brand-500: #1E8FB8;
+  --brand-600: #0B6B8A; /* principal */
+  --brand-700: #08485E;
+  --brand-800: #063A4A;
+  --brand-900: #052A36;
+
+  --ok: #0EA5E9;
+  --warn: #F59E0B;
+  --danger: #DC2626;
   }
   .dark {
     --background: 222.2 84% 4.9%;
@@ -76,3 +90,15 @@
     @apply bg-background text-foreground;
   }
 }
+
+.bg-brand-600 { background-color: var(--brand-600); }
+.text-brand-600 { color: var(--brand-600); }
+.border-brand-600 { border-color: var(--brand-600); }
+
+/* Focus visible accesible y consistente */
+:focus-visible {
+  outline: 2px solid var(--brand-600);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+html { font-feature-settings: "cv11","ss01","tnum","lnum"; }
