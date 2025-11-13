@@ -267,12 +267,10 @@ export default function EvaluationsSearch() {
   );
 
   // Filtro local por estado
-  const filteredData = useMemo(() => {
-    if (!statusLocal) return data;
-    return data.filter(
-      (e) => String(e.currentStatus) === statusLocal
-    );
-  }, [data, statusLocal]);
+const filteredData = useMemo(() => {
+  if (!statusLocal || statusLocal === "all") return data
+  return data.filter((e) => String(e.currentStatus) === statusLocal)
+}, [data, statusLocal])
 
   return (
     <TooltipProvider delayDuration={120}>
