@@ -313,7 +313,7 @@ export function VerbalMemorySubtest({ onComplete, onPause }: SubtestProps) {
                 className="min-h-40 bg-slate-50 border-slate-300 focus-visible:ring-0 focus-visible:border-slate-400"
                 value={recallText}
                 onChange={(e) => setRecallText(e.target.value)}
-                placeholder="Ej.: gato, perro, vaca…"
+                placeholder="escriba aquí..."
                 aria-label="Área para escribir palabras recordadas"
               />
 

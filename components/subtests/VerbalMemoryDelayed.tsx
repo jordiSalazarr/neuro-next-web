@@ -241,7 +241,7 @@ export default function VerbalMemoryDelayedSubtest({
                 className="min-h-40 bg-slate-50 border-slate-300 focus-visible:ring-0 focus-visible:border-slate-400"
                 value={recallText}
                 onChange={(e) => setRecallText(e.target.value)}
-                placeholder="Ej.: gato, perro, vaca, caballo…"
+                placeholder="escriba aquí..."
                 onKeyDown={(e) => {
                   if (
                     (e.metaKey || e.ctrlKey) &&
