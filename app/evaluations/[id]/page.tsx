@@ -31,6 +31,8 @@ import {
   CheckCircle,
 } from "lucide-react";
 
+import { IndividualTestResultsSection } from "@/components/IndividualTestResultsSection";
+
 // ================== Estilos corporativos reutilizables ==================
 const styles = {
   shell: "min-h-[calc(100vh-56px)] bg-slate-50",
@@ -359,10 +361,10 @@ export default function EvaluationDetailPage() {
     p == null
       ? styles.kpiWarn
       : p >= 0.75
-      ? styles.kpiGood
-      : p >= 0.4
-      ? styles.kpiWarn
-      : styles.kpiBad;
+        ? styles.kpiGood
+        : p >= 0.4
+          ? styles.kpiWarn
+          : styles.kpiBad;
 
   // ======= Loading / Error =======
   if (loading) {
@@ -554,6 +556,9 @@ export default function EvaluationDetailPage() {
               )}
             </div>
           </SectionCard>
+
+          {/* ===== Individual Test Results ===== */}
+          <IndividualTestResultsSection evaluationId={id} />
 
           {/* ===== Subtests + análisis ===== */}
           <Card className={styles.card}>
@@ -899,9 +904,9 @@ export default function EvaluationDetailPage() {
                                   value={
                                     tmtA.score
                                       ? pct(
-                                          tmtA.score
-                                            .accuracy
-                                        )
+                                        tmtA.score
+                                          .accuracy
+                                      )
                                       : "—"
                                   }
                                 />
@@ -955,9 +960,9 @@ export default function EvaluationDetailPage() {
                                   value={
                                     tmtAB.score
                                       ? pct(
-                                          tmtAB.score
-                                            .accuracy
-                                        )
+                                        tmtAB.score
+                                          .accuracy
+                                      )
                                       : "—"
                                   }
                                 />

@@ -21,6 +21,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Copy, Mail, RefreshCw, Download, ExternalLink, CheckCircle2, XCircle, MoreVertical } from "lucide-react";
 
 import { useEvaluationStore } from "@/src/stores/evaluation";
+import { IndividualTestResultsSection } from "@/components/IndividualTestResultsSection";
 
 interface Evaluation {
   pk: string;
@@ -252,6 +253,13 @@ export default function EvaluationDetails() {
                 )}
               </CardContent>
             </Card>
+          )}
+
+          {/* Individual Test Results - Enhanced UI */}
+          {evaluationId && !loading && !error && (
+            <div className="mb-6">
+              <IndividualTestResultsSection evaluationId={evaluationId} />
+            </div>
           )}
 
           {/* Análisis */}
