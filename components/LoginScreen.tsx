@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { LogIn, Stethoscope, ShieldCheck } from "lucide-react";
@@ -17,6 +18,8 @@ const styles = {
 };
 
 export default function LoginScreen() {
+  const t = useTranslations('screens.login');
+  const tApp = useTranslations('app');
   const { redirect } = useAuthenticate();
   const [isRedirecting, setIsRedirecting] = useState(false);
 
@@ -43,14 +46,14 @@ export default function LoginScreen() {
             {/* Marca compacta */}
             <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-brand-600 text-white shadow-sm">
               <Stethoscope className="h-6 w-6" aria-hidden="true" />
-              <span className="sr-only">neuroSuite</span>
+              <span className="sr-only">NeuroSuite</span>
             </div>
 
             <CardTitle className="text-slate-900 text-2xl sm:text-3xl font-semibold tracking-tight">
               NeuroSuite
             </CardTitle>
             <CardDescription className="text-slate-700 text-sm sm:text-base mt-1">
-              Plataforma de evaluación neuropsicológica
+              {tApp('description')}
             </CardDescription>
           </CardHeader>
 
@@ -62,15 +65,14 @@ export default function LoginScreen() {
               className={`${styles.primary} w-full h-11 sm:h-12 text-sm sm:text-base font-medium gap-2`}
             >
               <LogIn className="h-4 w-4" aria-hidden="true" />
-              {isRedirecting ? "Redirigiendo…" : "Acceder con identidad segura"}
+              {isRedirecting ? t('redirecting') : t('button')}
             </Button>
 
             {/* Aviso legal resumido, con buen contraste */}
             <div className="rounded-md border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700 flex items-start gap-2">
               <ShieldCheck className="h-4 w-4 text-brand-600 mt-0.5" aria-hidden="true" />
               <p>
-                La sesión se gestiona mediante un proveedor de identidad seguro.
-                Al continuar, aceptas la política de privacidad y el tratamiento seguro de datos.
+                {t('secureNote')}
               </p>
             </div>
           </CardContent>
@@ -79,11 +81,11 @@ export default function LoginScreen() {
         {/* Pie mínimo con enlaces legales */}
         <div className="mt-4 text-center text-xs text-slate-600">
           <a href="/legal/privacy" className="underline underline-offset-2 hover:text-slate-800">
-            Privacidad
+            {t('privacy')}
           </a>{" "}
           ·{" "}
           <a href="/legal/terms" className="underline underline-offset-2 hover:text-slate-800">
-            Términos
+            {t('terms')}
           </a>
         </div>
       </motion.div>

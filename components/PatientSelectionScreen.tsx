@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
+import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,6 +32,7 @@ const styles = {
 };
 
 export default function PatientSelectionScreen() {
+  const t = useTranslations('screens.patientSelection');
   const { register, loading, error } = useRegisterUser();
   const { create, createLoading, createError } = useCreateEvaluation();
 
@@ -140,32 +142,32 @@ export default function PatientSelectionScreen() {
               <ClipboardList className="h-5 w-5" aria-hidden="true" />
             </div>
             <div>
-              <h1 className="text-slate-900 text-xl font-semibold leading-tight">Nueva evaluación</h1>
-              <p className="text-[11px] text-slate-600">Datos mínimos para iniciar</p>
+              <h1 className="text-slate-900 text-xl font-semibold leading-tight">{t('title')}</h1>
+              <p className="text-[11px] text-slate-600">{t('subtitle')}</p>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
             <Badge variant="secondary" className="hidden sm:flex items-center gap-2">
               <User2 className="h-3.5 w-3.5" />
-              {user?.name || "Especialista"}
+              {user?.name || t('specialist')}
             </Badge>
             <Button
               variant="outline"
               size="sm"
               onClick={handleLogout}
               className={styles.outline + " gap-2"}
-              aria-label="Cerrar sesión"
+              aria-label={t('logout')}
             >
-              <LogOut className="h-4 w-4" /> Cerrar sesión
+              <LogOut className="h-4 w-4" /> {t('logout')}
             </Button>
           </div>
         </div>
 
         {/* Paso / Progreso contextual */}
         <div className="mb-6 flex flex-wrap items-center gap-2 text-xs">
-          <Badge className="bg-brand-600 text-white">Paso 1</Badge>
-          <span className="text-slate-700">Especialista y paciente</span>
+          <Badge className="bg-brand-600 text-white">{t('step1')}</Badge>
+          <span className="text-slate-700">{t('stepDesc')}</span>
           <Separator orientation="vertical" className="mx-2 h-4 bg-slate-200" />
           <div className="flex items-center gap-1 text-slate-700">
             <CalendarClock className="h-3.5 w-3.5" aria-hidden="true" /> 45–60 min
@@ -174,13 +176,13 @@ export default function PatientSelectionScreen() {
 
         {/* Contenido principal */}
         <div className="grid gap-6 md:grid-cols-1">
-       
+
           {/* Tarjeta Paciente */}
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}>
             <Card className={styles.card}>
               <CardHeader className="pb-2">
-                <CardTitle className="text-slate-900 text-base">Paciente</CardTitle>
-                <CardDescription>Complete los datos mínimos</CardDescription>
+                <CardTitle className="text-slate-900 text-base">{t('patientCardTitle')}</CardTitle>
+                <CardDescription>{t('patientCardDesc')}</CardDescription>
               </CardHeader>
 
               <CardContent>
@@ -188,11 +190,11 @@ export default function PatientSelectionScreen() {
                   <div className="grid gap-4 sm:grid-cols-2">
                     {/* Nombre */}
                     <div className="space-y-2">
-                      <Label htmlFor="patient-name">Nombre y apellidos</Label>
+                      <Label htmlFor="patient-name">{t('nameLabel')}</Label>
                       <Input
                         id="patient-name"
                         type="text"
-                        placeholder="p. ej., Jordi Salazar"
+                        placeholder={t('namePlaceholder')}
                         value={patientName}
                         onChange={(e) => handleNameChange(e.target.value)}
                         className="h-11"
@@ -204,18 +206,18 @@ export default function PatientSelectionScreen() {
                       />
                       {nameInvalid && (
                         <p id="name-error" className="text-xs text-rose-700">
-                          Introduce al menos 2 caracteres.
+                          {t('nameError')}
                         </p>
                       )}
                     </div>
 
                     {/* Edad */}
                     <div className="space-y-2">
-                      <Label htmlFor="patient-age">Edad</Label>
+                      <Label htmlFor="patient-age">{t('ageLabel')}</Label>
                       <Input
                         id="patient-age"
                         type="number"
-                        placeholder="Años"
+                        placeholder={t('agePlaceholder')}
                         value={patientAge}
                         onChange={(e) => handleAgeChange(e.target.value)}
                         min={16}
@@ -228,11 +230,11 @@ export default function PatientSelectionScreen() {
                         pattern="[0-9]*"
                       />
                       <p id="age-hint" className="text-xs text-slate-500">
-                        Mínimo 16 años.
+                        {t('ageHint')}
                       </p>
                       {ageInvalid && (
                         <p id="age-error" className="text-xs text-rose-700">
-                          Edad entre 16 y 120.
+                          {t('ageError')}
                         </p>
                       )}
                     </div>
@@ -242,7 +244,7 @@ export default function PatientSelectionScreen() {
                   <Alert className="border-slate-200 bg-slate-50 text-slate-800">
                     <ShieldCheck className="h-4 w-4 text-brand-600" aria-hidden="true" />
                     <AlertDescription className="text-xs">
-                      Procesamiento conforme a buenas prácticas clínicas. Almacenamiento seguro.
+                      {t('compliance')}
                     </AlertDescription>
                   </Alert>
 
@@ -256,10 +258,10 @@ export default function PatientSelectionScreen() {
                     >
                       {createLoading ? (
                         <span className="inline-flex items-center gap-2">
-                          <Loader2 className="h-4 w-4 animate-spin" /> Creando evaluación…
+                          <Loader2 className="h-4 w-4 animate-spin" /> {t('creatingBtn')}
                         </span>
                       ) : (
-                        "Iniciar evaluación"
+                        t('startBtn')
                       )}
                     </Button>
                   </div>
@@ -284,7 +286,7 @@ export default function PatientSelectionScreen() {
             <CardContent className="p-4 text-xs">
               <div className="flex items-center gap-2 text-slate-700">
                 <ShieldCheck className="h-4 w-4 text-brand-600" aria-hidden="true" />
-                <p>Datos cifrados en tránsito y reposo · Acceso por roles · Auditoría completa</p>
+                <p>{t('securityFooter')}</p>
               </div>
             </CardContent>
           </Card>

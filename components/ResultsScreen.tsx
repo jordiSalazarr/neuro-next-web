@@ -5,6 +5,7 @@ import { useRouter, useParams } from "next/navigation";
 import axios from "axios";
 import ReactMarkdown from "react-markdown";
 import { motion } from "framer-motion";
+import { useTranslations } from "next-intl";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -44,19 +45,21 @@ const cn = (...c: (string | false | undefined)[]) => c.filter(Boolean).join(" ")
 
 function BackToHomeButton() {
   const router = useRouter();
+  const t = useTranslations('screens.results');
   return (
     <Button
       onClick={() => router.push("/home")}
       size="sm"
       className="gap-2 bg-blue-100 text-blue-800 border border-blue-200 hover:bg-blue-200"
-      aria-label="Volver a inicio"
+      aria-label={t('backToHome')}
     >
-      Volver a inicio
+      {t('backToHome')}
     </Button>
   );
 }
 
 export default function EvaluationDetails() {
+  const t = useTranslations('screens.results');
   const router = useRouter();
   const params = useParams<{ id?: string }>();
   const idFromRoute = (params?.id as string) || "";
@@ -69,7 +72,7 @@ export default function EvaluationDetails() {
   const [copyOk, setCopyOk] = useState(false);
 
   const base = (process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8401").replace(/\/+$/, "");
-  const ageLabel = data ? `${data.patientAge} años` : "";
+  // const ageLabel = data ? `${data.patientAge} años` : ""; // We use translation for 'años' now in labels or here
 
   // fetch con cancelación y guardas para no quedarse en loading
   useEffect(() => {
@@ -93,7 +96,7 @@ export default function EvaluationDetails() {
         if (!cancelled) setData(res.data.evaluation);
       } catch (e: any) {
         if (axios.isCancel(e) || e?.name === "CanceledError") return;
-        if (!cancelled) setError(e?.response?.data?.message || e?.message || "Error cargando la evaluación");
+        if (!cancelled) setError(e?.response?.data?.message || e?.message || t('error'));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -104,7 +107,7 @@ export default function EvaluationDetails() {
       cancelled = true;
       controller.abort();
     };
-  }, [evaluationId, base]);
+  }, [evaluationId, base, t]);
 
   const handleRefresh = () => {
     // forzamos el efecto cambiando una key “tonta”: simplemente re-llama a run
@@ -129,14 +132,14 @@ export default function EvaluationDetails() {
                 <BackToHomeButton />
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground">Evaluación</span>
+                    <span className="text-xs text-muted-foreground">{t('evaluation')}</span>
                     <Separator orientation="vertical" className="h-4" />
                     <span className="truncate font-medium text-sm">{evaluationId || "—"}</span>
                   </div>
                   <div className="mt-1 flex flex-wrap items-center gap-2 text-xs">
                     {data ? (
                       <Badge className={cn("h-5 px-2", statusColor[data.currentStatus] || "bg-slate-100 text-slate-700")}>
-                        {data.currentStatus}
+                        {data.currentStatus /* Status usually stays in English/Code or needs mapping if critical */}
                       </Badge>
                     ) : loading ? (
                       <Skeleton className="h-5 w-24 rounded-full" />
@@ -144,7 +147,7 @@ export default function EvaluationDetails() {
                       <Badge className="h-5 px-2 bg-slate-100 text-slate-700">—</Badge>
                     )}
                     <span className="text-muted-foreground">•</span>
-                    {loading ? <Skeleton className="h-4 w-28" /> : <span className="text-muted-foreground">Creada: {formatDate(data?.createdAt)}</span>}
+                    {loading ? <Skeleton className="h-4 w-28" /> : <span className="text-muted-foreground">{t('created', { date: formatDate(data?.createdAt) })}</span>}
                   </div>
                 </div>
               </div>
@@ -152,27 +155,27 @@ export default function EvaluationDetails() {
               <div className="flex items-center gap-2">
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button onClick={handleRefresh} variant="outline" size="icon" aria-label="Refrescar">
+                    <Button onClick={handleRefresh} variant="outline" size="icon" aria-label={t('refresh')}>
                       <RefreshCw className="h-4 w-4" />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent>Refrescar</TooltipContent>
+                  <TooltipContent>{t('refresh')}</TooltipContent>
                 </Tooltip>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="icon" aria-label="Más acciones">
+                    <Button variant="outline" size="icon" aria-label={t('moreActions')}>
                       <MoreVertical className="h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-44">
                     <DropdownMenuItem onClick={() => router.back()}>
-                      <ExternalLink className="mr-2 h-4 w-4" /> Volver
+                      <ExternalLink className="mr-2 h-4 w-4" /> {t('back')}
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       disabled={!data?.storage_url}
                       onClick={() => data?.storage_url && window.open(data.storage_url, "_blank")}
                     >
-                      <Download className="mr-2 h-4 w-4" /> Descargar PDF
+                      <Download className="mr-2 h-4 w-4" /> {t('downloadPdf')}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -194,13 +197,13 @@ export default function EvaluationDetails() {
           {!evaluationId && !loading && !error && (
             <Card className="mb-6">
               <CardHeader>
-                <CardTitle>Sin evaluación seleccionada</CardTitle>
-                <CardDescription>Vuelve al historial o inicia una nueva evaluación.</CardDescription>
+                <CardTitle>{t('noSelection')}</CardTitle>
+                <CardDescription>{t('noSelectionDesc')}</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="flex gap-2">
-                  <Button onClick={() => router.push("/history")} variant="outline">Ir a historial</Button>
-                  <Button onClick={() => router.push("/patient-selection")}>Nueva evaluación</Button>
+                  <Button onClick={() => router.push("/history")} variant="outline">{t('toHistory')}</Button>
+                  <Button onClick={() => router.push("/patient-selection")}>{t('newEvaluation')}</Button>
                 </div>
               </CardContent>
             </Card>
@@ -218,10 +221,10 @@ export default function EvaluationDetails() {
                   </div>
                 ) : (
                   <div className="grid gap-3 sm:grid-cols-3">
-                    <InfoRow label="Paciente" value={data?.patientName} />
-                    <InfoRow label="Edad" value={data ? `${data.patientAge} años` : "—"} />
+                    <InfoRow label={t('patient')} value={data?.patientName} />
+                    <InfoRow label={t('age')} value={data ? `${data.patientAge}` : "—"} />
                     <div className="flex items-center gap-2 min-w-0">
-                      <Label className="text-xs text-muted-foreground">Especialista</Label>
+                      <Label className="text-xs text-muted-foreground">{t('specialist')}</Label>
                       <div className="flex items-center gap-2 truncate">
                         <Mail className="h-4 w-4 text-muted-foreground" />
                         <span className="truncate text-sm">{data?.specialistMail}</span>
@@ -236,12 +239,12 @@ export default function EvaluationDetails() {
                                 setCopyOk(true);
                                 setTimeout(() => setCopyOk(false), 1200);
                               }}
-                              aria-label="Copiar email"
+                              aria-label={t('copyEmail')}
                             >
                               {copyOk ? <CheckCircle2 className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                             </Button>
                           </TooltipTrigger>
-                          <TooltipContent>{copyOk ? "Copiado" : "Copiar"}</TooltipContent>
+                          <TooltipContent>{copyOk ? t('copied') : t('copyEmail')}</TooltipContent>
                         </Tooltip>
                       </div>
                     </div>
@@ -255,14 +258,14 @@ export default function EvaluationDetails() {
           {evaluationId && (
             <Card className="shadow-sm">
               <CardHeader className="pb-3">
-                <CardTitle className="text-base">Análisis</CardTitle>
-                <CardDescription className="text-xs">Resumen clínico automatizado</CardDescription>
+                <CardTitle className="text-base">{t('analysis')}</CardTitle>
+                <CardDescription className="text-xs">{t('analysisDesc')}</CardDescription>
               </CardHeader>
               <CardContent>
                 <Tabs defaultValue="resumen" className="w-full">
                   <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="resumen">Resumen</TabsTrigger>
-                    <TabsTrigger value="raw">Markdown</TabsTrigger>
+                    <TabsTrigger value="resumen">{t('summaryTab')}</TabsTrigger>
+                    <TabsTrigger value="raw">{t('rawTab')}</TabsTrigger>
                   </TabsList>
 
                   <TabsContent value="resumen" className="mt-4">
@@ -280,7 +283,7 @@ export default function EvaluationDetails() {
                         </div>
                       </motion.div>
                     ) : (
-                      <p className="text-sm text-muted-foreground">Sin análisis disponible.</p>
+                      <p className="text-sm text-muted-foreground">{t('noAnalysis')}</p>
                     )}
                   </TabsContent>
 
@@ -296,7 +299,7 @@ export default function EvaluationDetails() {
                         {data.assistantAnalysis}
                       </pre>
                     ) : (
-                      <p className="text-sm text-muted-foreground">Sin contenido.</p>
+                      <p className="text-sm text-muted-foreground">{t('noAnalysis')}</p>
                     )}
                   </TabsContent>
                 </Tabs>
@@ -310,11 +313,11 @@ export default function EvaluationDetails() {
           <div className="mx-auto max-w-6xl px-4 py-3">
             <div className="flex items-center justify-between">
               <div className="text-xs text-muted-foreground truncate">
-                {data ? `Paciente: ${data.patientName} · ${ageLabel}` : loading ? "Cargando…" : "—"}
+                {data ? `${t('patient')}: ${data.patientName} · ${data.patientAge}` : loading ? t('screens.home.loading') : "—"}
               </div>
               <div className="flex items-center gap-2">
                 <Button onClick={() => location.reload()} variant="outline" size="sm" className="gap-2">
-                  <RefreshCw className="h-4 w-4" /> Refrescar
+                  <RefreshCw className="h-4 w-4" /> {t('refresh')}
                 </Button>
                 <Button
                   variant="default"
@@ -322,6 +325,7 @@ export default function EvaluationDetails() {
                   disabled={!data?.storage_url}
                   onClick={() => data?.storage_url && window.open(data.storage_url, "_blank")}
                   className="gap-2"
+                  aria-label={t('downloadPdf')}
                 >
                   <Download className="h-4 w-4" /> PDF
                 </Button>

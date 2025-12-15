@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import ReactMarkdown from "react-markdown";
+import { useTranslations } from "next-intl";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -137,6 +138,9 @@ function truncateWords(text: string, maxWords: number): string {
 
 // ================= Componente =================
 export default function EvaluationsSearch() {
+  const t = useTranslations('screens.history');
+  const tGeneral = useTranslations('common');
+
   const currentUser = useAuthStore((s) => s.user);
 
   // Filtros
@@ -267,10 +271,10 @@ export default function EvaluationsSearch() {
   );
 
   // Filtro local por estado
-const filteredData = useMemo(() => {
-  if (!statusLocal || statusLocal === "all") return data
-  return data.filter((e) => String(e.currentStatus) === statusLocal)
-}, [data, statusLocal])
+  const filteredData = useMemo(() => {
+    if (!statusLocal || statusLocal === "all") return data
+    return data.filter((e) => String(e.currentStatus) === statusLocal)
+  }, [data, statusLocal])
 
   return (
     <TooltipProvider delayDuration={120}>
@@ -282,20 +286,20 @@ const filteredData = useMemo(() => {
               {/* Línea 1: título y acciones rápidas */}
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
-                  <Link href="/home" aria-label="Ir a inicio">
+                  <Link href="/home" aria-label={t('home')}>
                     <Button
                       variant="outline"
                       size="sm"
                       className={`${styles.outline} bg-white`}
                     >
-                      <Home className="h-4 w-4 mr-2" /> Inicio
+                      <Home className="h-4 w-4 mr-2" /> {t('home')}
                     </Button>
                   </Link>
                   <h2 className="text-slate-900 text-base sm:text-lg font-semibold">
-                    Buscador de evaluaciones
+                    {t('title')}
                   </h2>
                   <Badge className="bg-slate-100 text-slate-800 border border-slate-200">
-                    {count ?? 0} totales
+                    {t('total', { count: count ?? 0 })}
                   </Badge>
                 </div>
                 <div className="hidden sm:flex items-center gap-2">
@@ -306,13 +310,13 @@ const filteredData = useMemo(() => {
                         size="sm"
                         onClick={onReset}
                         className={`${styles.outline} bg-white`}
-                        aria-label="Resetear filtros"
+                        aria-label={t('reset')}
                       >
-                        <RotateCcw className="h-4 w-4 mr-2" /> Reset
+                        <RotateCcw className="h-4 w-4 mr-2" /> {t('reset')}
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>
-                      Últimos 30 días y filtros limpios
+                      {t('resetTooltip')}
                     </TooltipContent>
                   </Tooltip>
                   <Button
@@ -320,14 +324,14 @@ const filteredData = useMemo(() => {
                     onClick={onSearch}
                     disabled={loading}
                     className={styles.primary}
-                    aria-label="Buscar"
+                    aria-label={t('search')}
                   >
                     {loading ? (
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                     ) : (
                       <Search className="h-4 w-4 mr-2" />
                     )}
-                    Buscar
+                    {t('search')}
                   </Button>
                 </div>
               </div>
@@ -365,7 +369,7 @@ const filteredData = useMemo(() => {
                 {/* Búsqueda texto */}
                 <div className="col-span-2">
                   <Input
-                    placeholder="Buscar por paciente o término…"
+                    placeholder={t('searchPlaceholder')}
                     value={searchTerm}
                     onChange={(e) =>
                       onSearchTermChange(e.target.value)
@@ -373,7 +377,7 @@ const filteredData = useMemo(() => {
                     onKeyDown={(e) =>
                       e.key === "Enter" && onSearch()
                     }
-                    aria-label="Buscar"
+                    aria-label={t('search')}
                     className="bg-white"
                   />
                 </div>
@@ -395,10 +399,10 @@ const filteredData = useMemo(() => {
                       <SelectValue placeholder="12" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="8">8 / pág</SelectItem>
-                      <SelectItem value="12">12 / pág</SelectItem>
-                      <SelectItem value="24">24 / pág</SelectItem>
-                      <SelectItem value="48">48 / pág</SelectItem>
+                      <SelectItem value="8">8 {t('perPage')}</SelectItem>
+                      <SelectItem value="12">12 {t('perPage')}</SelectItem>
+                      <SelectItem value="24">24 {t('perPage')}</SelectItem>
+                      <SelectItem value="48">48 {t('perPage')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -412,7 +416,7 @@ const filteredData = useMemo(() => {
                   className={styles.chip}
                   onClick={() => quickRange(7)}
                 >
-                  Últimos 7 días
+                  {t('last7days')}
                 </Button>
                 <Button
                   variant="outline"
@@ -420,7 +424,7 @@ const filteredData = useMemo(() => {
                   className={styles.chip}
                   onClick={() => quickRange(30)}
                 >
-                  Últimos 30 días
+                  {t('last30days')}
                 </Button>
                 <Button
                   variant="outline"
@@ -428,63 +432,8 @@ const filteredData = useMemo(() => {
                   className={styles.chip}
                   onClick={() => quickRange(90)}
                 >
-                  Últimos 90 días
+                  {t('last90days')}
                 </Button>
-
-                {/* <div className="ml-auto flex items-center gap-2">
-                  <span className="text-xs text-slate-600">
-                    Estado:
-                  </span>
-                  <Select
-                    value={statusLocal}
-                    onValueChange={setStatusLocal}
-                  >
-                    <SelectTrigger className="h-8 w-[150px] bg-white">
-                      <SelectValue placeholder="Todos" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Todos</SelectItem>
-                      <SelectItem value="CREATED">
-                        CREATED
-                      </SelectItem>
-                      <SelectItem value="IN_PROGRESS">
-                        IN_PROGRESS
-                      </SelectItem>
-                      <SelectItem value="FINISHED">
-                        FINISHED
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-
-                  <Accordion
-                    type="single"
-                    collapsible
-                    className="text-slate-700"
-                  >
-                    <AccordionItem
-                      value="advanced"
-                      className="border-none"
-                    >
-                      <AccordionTrigger className="text-xs sm:text-sm hover:no-underline">
-                        <span className="inline-flex items-center gap-2">
-                          <Filter className="h-4 w-4" /> Más
-                          filtros
-                        </span>
-                      </AccordionTrigger>
-                      <AccordionContent className="pt-2">
-                        <div className="grid gap-3 sm:grid-cols-4">
-                          <div className="col-span-4">
-                            <div className="text-xs text-slate-600">
-                              (Espacio para filtros
-                              adicionales: centro,
-                              etiqueta, etc.)
-                            </div>
-                          </div>
-                        </div>
-                      </AccordionContent>
-                    </AccordionItem>
-                  </Accordion>
-                </div> */}
               </div>
             </div>
           </div>
@@ -496,12 +445,13 @@ const filteredData = useMemo(() => {
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="text-sm text-slate-700">
               {loading
-                ? "Cargando…"
-                : `Página ${page} de ${totalPages}${
+                ? tGeneral('loading')
+                : t('showing', { curr: Math.min(filteredData.length, limit) || 0, total: count || 0 })
+              /*  `Página ${page} de ${totalPages}${
                     filteredData.length
                       ? ` · ${filteredData.length} resultados en esta página`
                       : ""
-                  }`}
+                  }` */}
             </div>
             <div className="flex gap-2">
               <Button
@@ -514,7 +464,7 @@ const filteredData = useMemo(() => {
                 }}
                 className={`${styles.outline} bg-white`}
               >
-                <ChevronLeft className="h-4 w-4 mr-1" /> Anterior
+                <ChevronLeft className="h-4 w-4 mr-1" /> {t('previous')}
               </Button>
               <Button
                 variant="outline"
@@ -526,8 +476,7 @@ const filteredData = useMemo(() => {
                 }}
                 className={`${styles.outline} bg-white`}
               >
-                Siguiente{" "}
-                <ChevronRight className="h-4 w-4 ml-1" />
+                {t('next')} <ChevronRight className="h-4 w-4 ml-1" />
               </Button>
             </div>
           </div>
@@ -543,7 +492,7 @@ const filteredData = useMemo(() => {
                 className="ml-1 text-rose-700 hover:bg-rose-100"
                 onClick={onSearch}
               >
-                Reintentar
+                {t('retry')}
               </Button>
             </div>
           )}
@@ -592,22 +541,21 @@ const filteredData = useMemo(() => {
                     <Search className="h-6 w-6 text-sky-700" />
                   </div>
                   <p className="text-slate-700">
-                    No hay evaluaciones para los filtros
-                    actuales.
+                    {t('emptyState')}
                   </p>
                   <div className="mt-4 flex justify-center gap-2">
                     <Button
                       onClick={onReset}
                       className={styles.primary}
                     >
-                      Limpiar filtros
+                      {t('clearFilters')}
                     </Button>
                     <Button
                       variant="outline"
                       onClick={onSearch}
                       className={styles.outline}
                     >
-                      Reintentar
+                      {t('retry')}
                     </Button>
                   </div>
                 </CardContent>
@@ -623,8 +571,7 @@ const filteredData = useMemo(() => {
                 <CardHeader className="pb-2">
                   <div className="flex items-start justify-between gap-2">
                     <CardTitle className="truncate text-lg text-slate-900">
-                      {ev.patientName ||
-                        "Paciente sin nombre"}
+                      {ev.patientName || t('patientless')}
                     </CardTitle>
                     <Badge
                       className={cnStatusVariant(
@@ -642,11 +589,11 @@ const filteredData = useMemo(() => {
                 <CardContent className="grid gap-3 text-sm text-slate-800">
                   <div className="grid grid-cols-2 gap-3">
                     <Info
-                      label="Edad"
+                      label={t('screens.results.age')}
                       value={ev.patientAge ?? "–"}
                     />
                     <Info
-                      label="Especialista"
+                      label={t('screens.results.specialist')}
                       value={ev.specialistMail}
                       clamp
                     />
@@ -655,7 +602,7 @@ const filteredData = useMemo(() => {
                   {ev.assistantAnalysis && (
                     <div className="space-y-1">
                       <div className="text-xs text-slate-600">
-                        Análisis asistente
+                        {t('assistantAnalysis')}
                       </div>
                       <div className="prose prose-sm max-w-none prose-p:my-0">
                         <ReactMarkdown>
@@ -675,7 +622,7 @@ const filteredData = useMemo(() => {
                       href={`/evaluations/${ev.pk}`}
                       className="rounded text-sm text-[#0E7C86] underline underline-offset-4 focus:outline-none focus:ring-2 focus:ring-[#0E7C86]/40"
                     >
-                      Ver detalle
+                      {t('viewDetail')}
                     </Link>
                     {ev.storage_url ? (
                       <a
@@ -688,7 +635,7 @@ const filteredData = useMemo(() => {
                       </a>
                     ) : (
                       <span className="text-xs text-slate-500">
-                        Sin PDF
+                        {t('noPdf')}
                       </span>
                     )}
                   </div>
@@ -700,14 +647,7 @@ const filteredData = useMemo(() => {
           {/* Footer de navegación */}
           <div className="mt-8 flex items-center justify-between text-slate-700">
             <div className="text-xs">
-              {count
-                ? `Mostrando ${
-                    Math.min(filteredData.length, limit) ||
-                    0
-                  } de ${count}`
-                : filteredData.length
-                ? `Mostrando ${filteredData.length}`
-                : ""}
+              {t('showing', { curr: Math.min(filteredData.length, limit) || 0, total: count || 0 })}
             </div>
             <div className="flex gap-2">
               <Button
@@ -720,7 +660,7 @@ const filteredData = useMemo(() => {
                 }}
                 className={`${styles.outline} bg-white`}
               >
-                <ChevronLeft className="h-4 w-4 mr-1" /> Anterior
+                <ChevronLeft className="h-4 w-4 mr-1" /> {t('previous')}
               </Button>
               <Button
                 variant="outline"
@@ -732,8 +672,7 @@ const filteredData = useMemo(() => {
                 }}
                 className={`${styles.outline} bg-white`}
               >
-                Siguiente{" "}
-                <ChevronRight className="h-4 w-4 ml-1" />
+                {t('next')} <ChevronRight className="h-4 w-4 ml-1" />
               </Button>
             </div>
           </div>

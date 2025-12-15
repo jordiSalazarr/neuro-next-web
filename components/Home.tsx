@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { Loader2, ClipboardList, History, ShieldCheck, Stethoscope } from "lucide-react";
@@ -17,6 +18,7 @@ const styles = {
 };
 
 export default function HomeScreen() {
+  const t = useTranslations('screens.home');
   const { loading, error } = useCognitoCallback({ redirectPath: "/home" });
 
   if (loading) {
@@ -25,7 +27,7 @@ export default function HomeScreen() {
         <Card className={`${styles.card} w-[min(92vw,420px)]`}>
           <CardContent className="py-6 flex items-center gap-3">
             <Loader2 className="h-5 w-5 animate-spin text-brand-600" />
-            <p className="text-slate-800 text-sm">Cargando…</p>
+            <p className="text-slate-800 text-sm">{t('loading')}</p>
           </CardContent>
         </Card>
       </div>
@@ -37,12 +39,12 @@ export default function HomeScreen() {
       <div className="grid place-items-center min-h-screen px-4">
         <Card className={`${styles.card} w-[min(92vw,520px)]`}>
           <CardHeader className="pb-2">
-            <h1 className="text-slate-900 text-lg font-semibold">Error de autenticación</h1>
+            <h1 className="text-slate-900 text-lg font-semibold">{t('authError')}</h1>
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-sm text-slate-700">{error}</p>
             <Button asChild className={styles.primary} size="lg">
-              <Link href="/">Volver a iniciar sesión</Link>
+              <Link href="/">{t('relogin')}</Link>
             </Button>
           </CardContent>
         </Card>
@@ -61,18 +63,18 @@ export default function HomeScreen() {
             </div>
             <div>
               <h1 className="text-3xl font-semibold tracking-tight text-slate-900">NeuroSuite</h1>
-              <p className="mt-1 text-sm text-slate-600">Tests neuropsicológicos · flujo guiado · informes.</p>
+              <p className="mt-1 text-sm text-slate-600">{t('subtitle')}</p>
             </div>
           </div>
           <div className="flex gap-2">
             <Button asChild size="lg" className={styles.primary}>
               <Link href="/patient-selection">
-                <ClipboardList className="mr-2 h-5 w-5" /> Nueva evaluación
+                <ClipboardList className="mr-2 h-5 w-5" /> {t('newEvaluation')}
               </Link>
             </Button>
             <Button asChild variant="outline" size="lg" className={styles.outline}>
               <Link href="/history">
-                <History className="mr-2 h-5 w-5" /> Historial
+                <History className="mr-2 h-5 w-5" /> {t('history')}
               </Link>
             </Button>
           </div>
@@ -88,15 +90,15 @@ export default function HomeScreen() {
                   <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-600 text-white">
                     <ClipboardList className="h-5 w-5" aria-hidden="true" />
                   </div>
-                  <h3 className="text-base font-semibold text-slate-900">Iniciar nueva evaluación</h3>
+                  <h3 className="text-base font-semibold text-slate-900">{t('startNewEvaluation')}</h3>
                 </div>
               </CardHeader>
               <CardContent className="text-sm text-slate-700">
-                Flujo paso a paso con control de calidad y temporizaciones.
+                {t('startNewEvaluationDesc')}
               </CardContent>
               <CardFooter>
                 <Button asChild className={`${styles.primary} w-full`}>
-                  <Link href="/patient-selection">Comenzar</Link>
+                  <Link href="/patient-selection">{t('start')}</Link>
                 </Button>
               </CardFooter>
             </Card>
@@ -114,15 +116,15 @@ export default function HomeScreen() {
                   <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-800 text-white">
                     <History className="h-5 w-5" aria-hidden="true" />
                   </div>
-                  <h3 className="text-base font-semibold text-slate-900">Historial</h3>
+                  <h3 className="text-base font-semibold text-slate-900">{t('historyTitle')}</h3>
                 </div>
               </CardHeader>
               <CardContent className="text-sm text-slate-700">
-                Resultados, comparativas y exportación de informes.
+                {t('historyDesc')}
               </CardContent>
               <CardFooter>
                 <Button asChild variant="outline" className={`${styles.outline} w-full`}>
-                  <Link href="/history">Ver historial</Link>
+                  <Link href="/history">{t('viewHistory')}</Link>
                 </Button>
               </CardFooter>
             </Card>
@@ -135,7 +137,7 @@ export default function HomeScreen() {
             <CardContent className="p-4 text-xs">
               <div className="flex items-center gap-2 text-slate-700">
                 <ShieldCheck className="h-4 w-4 text-brand-600" aria-hidden="true" />
-                <p>Datos cifrados en tránsito y reposo · Control de acceso por roles · Auditoría completa.</p>
+                <p>{t('security')}</p>
               </div>
             </CardContent>
           </Card>
