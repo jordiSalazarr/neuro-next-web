@@ -1,0 +1,56 @@
+{
+  "app": {
+    "title": "NeuroSuite - Neuropsychological Assessment",
+    "description": "Clinical platform for neuropsychological testing and monitoring."
+  },
+  "common": {
+    "loading": "Loading...",
+    "start": "Start",
+    "continue": "Continue",
+    "finish": "Finish",
+    "back": "Back",
+    "next": "Next",
+    "cancel": "Cancel",
+    "save": "Save",
+    "submit": "Submit",
+    "close": "Close"
+  },
+  "subtests": {
+    "attention": {
+      "name": "Sustained Attention - Letter Cancellation",
+      "description": "Identify and select the target letter that appears on screen as quickly as possible."
+    },
+    "verbalMemory": {
+      "name": "Verbal Memory - HVLT-R",
+      "description": "Listen to the word lists and remember as many as you can in each trial."
+    },
+    "visualMemory": {
+      "name": "Visual Memory - BVMT-R",
+      "description": "Observe the geometric figures and then draw them in the same order and position."
+    },
+    "executive": {
+      "name": "Executive Functions - TMT A/B",
+      "description": "Connect numbers and letters in sequence as quickly as possible without making errors."
+    },
+    "visuospatial": {
+      "name": "Visuospatial - Clock Drawing Test",
+      "description": "Draw a clock showing the indicated time, including numbers and hands."
+    },
+    "verbalMemoryDelayed": {
+      "name": "Verbal Memory - Delayed Recall",
+      "description": "After the interval, write all the words you remember from the list presented before."
+    },
+    "language": {
+      "name": "Language - Semantic Verbal Fluency",
+      "description": "Say as many words as you can from the indicated category in 60 seconds."
+    }
+  },
+  "evaluation": {
+    "title": "Neuropsychological Assessment",
+    "instructions": "Instructions",
+    "progress": "Progress",
+    "timeRemaining": "Time remaining",
+    "completed": "Completed",
+    "results": "Results"
+  }
+}

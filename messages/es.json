@@ -1,0 +1,78 @@
+{
+  "app": {
+    "title": "NeuroSuite - Evaluacion neuropsicologica",
+    "description": "Plataforma clinica para tests neuropsicologicos y seguimiento."
+  },
+  "common": {
+    "loading": "Cargando...",
+    "start": "Iniciar",
+    "continue": "Continuar",
+    "finish": "Finalizar",
+    "back": "Volver",
+    "next": "Siguiente",
+    "cancel": "Cancelar",
+    "save": "Guardar",
+    "submit": "Enviar",
+    "close": "Cerrar"
+  },
+  "subtests": {
+    "attention": {
+      "name": "Atencion Sostenida - Cancelacion de Letras",
+      "description": "Identifique y seleccione la letra objetivo que aparece en pantalla lo mas rapido posible."
+    },
+    "verbalMemory": {
+      "name": "Memoria Verbal - HVLT-R",
+      "description": "Escuche las listas de palabras y recuerde tantas como pueda en cada ensayo."
+    },
+    "visualMemory": {
+      "name": "Memoria Visual - BVMT-R",
+      "description": "Observe las figuras geometricas y luego dibujelas en el mismo orden y posicion."
+    },
+    "executive": {
+      "name": "Funciones Ejecutivas - TMT A/B",
+      "description": "Conecte los numeros y letras en secuencia lo mas rapido posible sin cometer errores."
+    },
+    "visuospatial": {
+      "name": "Visuoespacial - Test del Reloj",
+      "description": "Dibuje un reloj que muestre la hora indicada, incluyendo numeros y manecillas."
+    },
+    "verbalMemoryDelayed": {
+      "name": "Memoria verbal - Recuerdo diferido",
+      "description": "Tras el intervalo, escribe todas las palabras que recuerdes de la lista presentada antes."
+    },
+    "language": {
+      "name": "Lenguaje - Fluencia Verbal Semantica",
+      "description": "Diga todas las palabras que pueda de la categoria indicada en 60 segundos."
+    }
+  },
+  "evaluation": {
+    "title": "Evaluacion Neuropsicologica",
+    "instructions": "Instrucciones",
+    "progress": "Progreso",
+    "timeRemaining": "Tiempo restante",
+    "completed": "Completado",
+    "results": "Resultados",
+    "duration": "Duracion",
+    "sessionTime": "Tiempo de sesion",
+    "sessionPaused": "Sesion Pausada",
+    "sessionPausedDesc": "La evaluacion esta pausada. El tiempo se ha detenido hasta que reanude la sesion.",
+    "timeElapsed": "Tiempo transcurrido",
+    "subtestsCompleted": "subtests completados",
+    "subtestOf": "Subtest {current} de {total}",
+    "percentComplete": "{percent}% completado",
+    "testingMode": "Modo Testing",
+    "manualNavigation": "Navegacion manual para testing de UI",
+    "confirmRestart": "Esta seguro de que desea reiniciar la sesion? Se perderan todos los datos actuales.",
+    "confirmFinish": "Esta accion finalizara el test por completo.",
+    "areYouSure": "Estas seguro?"
+  },
+  "actions": {
+    "pause": "Pausar",
+    "resume": "Reanudar",
+    "restart": "Reiniciar",
+    "previous": "Anterior",
+    "next": "Siguiente",
+    "finishTest": "Finalizar Test",
+    "yesFinish": "Si, finalizar"
+  }
+}

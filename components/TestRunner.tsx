@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
@@ -12,6 +13,7 @@ import { useRouter } from "next/navigation"
 import { SUBTEST_CONFIGS } from "@/config/subtests"
 
 export default function TestRunner() {
+  const t = useTranslations()
   const { state, dispatch } = useApp()
   const [isPaused, setIsPaused] = useState(false)
   const [sessionTime, setSessionTime] = useState(0)
@@ -61,7 +63,7 @@ export default function TestRunner() {
     const completeResult: SubtestResult = {
       ...result,
       subtestId: currentSubtest.id,
-      name: currentSubtest.name,
+      name: t(currentSubtest.nameKey),
     }
 
     dispatch({ type: "COMPLETE_SUBTEST", payload: completeResult })
@@ -241,15 +243,15 @@ export default function TestRunner() {
           <Card className="mb-4 sm:mb-6">
             <CardHeader className="pb-3 sm:pb-6">
               <CardTitle className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                <span className="text-lg sm:text-xl lg:text-2xl leading-tight">{currentSubtest.name}</span>
+                <span className="text-lg sm:text-xl lg:text-2xl leading-tight">{t(currentSubtest.nameKey)}</span>
                 {currentSubtest.duration && (
                   <Badge variant="outline" className="self-start sm:self-auto text-xs sm:text-sm">
-                    Duración: {Math.floor(currentSubtest.duration / 60)}:
+                    {t('evaluation.duration')}: {Math.floor(currentSubtest.duration / 60)}:
                     {(currentSubtest.duration % 60).toString().padStart(2, "0")}
                   </Badge>
                 )}
               </CardTitle>
-              <p className="text-sm sm:text-base text-gray-600 mt-2">{currentSubtest.description}</p>
+              <p className="text-sm sm:text-base text-gray-600 mt-2">{t(currentSubtest.descriptionKey)}</p>
             </CardHeader>
           </Card>
         )}

@@ -40,9 +40,9 @@ export interface SubtestResult {
 
 export interface SubtestConfig {
   id: string
-  name: string
-  description: string
-  duration?: number // en segundos, null si no tiene límite
+  nameKey: string
+  descriptionKey: string
+  duration?: number // in seconds, null if no limit
   component: React.ComponentType<SubtestProps>
 }
 

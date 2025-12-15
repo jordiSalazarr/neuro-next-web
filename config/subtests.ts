@@ -10,52 +10,51 @@ import VerbalMemoryDelayedSubtest from "@/components/subtests/VerbalMemoryDelaye
 export const SUBTEST_CONFIGS: SubtestConfig[] = [
   {
     id: "attention-sustained",
-    name: "Atención Sostenida - Cancelación de Letras",
-    description: "Identifique y seleccione la letra objetivo que aparece en pantalla lo más rápido posible.",
-    duration: 300, // 5 minutos
+    nameKey: "subtests.attention.name",
+    descriptionKey: "subtests.attention.description",
+    duration: 300,
     component: AttentionSubtest,
   },
   {
     id: "verbal-memory-hvlt",
-    name: "Memoria Verbal - HVLT-R",
-    description: "Escuche las listas de palabras y recuerde tantas como pueda en cada ensayo.",
-    duration: 600, // 10 minutos
+    nameKey: "subtests.verbalMemory.name",
+    descriptionKey: "subtests.verbalMemory.description",
+    duration: 600,
     component: VerbalMemorySubtest,
   },
   {
     id: "visual-memory-bvmt",
-    name: "Memoria Visual - BVMT-R",
-    description: "Observe las figuras geométricas y luego dibújelas en el mismo orden y posición.",
-    duration: 480, // 8 minutos
+    nameKey: "subtests.visualMemory.name",
+    descriptionKey: "subtests.visualMemory.description",
+    duration: 480,
     component: VisualMemorySubtest,
   },
   {
     id: "executive-tmt",
-    name: "Funciones Ejecutivas - TMT A/B",
-    description: "Conecte los números y letras en secuencia lo más rápido posible sin cometer errores.",
-    duration: 420, // 7 minutos
+    nameKey: "subtests.executive.name",
+    descriptionKey: "subtests.executive.description",
+    duration: 420,
     component: ExecutiveFunctionSubtest,
   },
   {
     id: "visuospatial-clock",
-    name: "Visuoespacial - Test del Reloj",
-    description: "Dibuje un reloj que muestre la hora indicada, incluyendo números y manecillas.",
-    duration: 300, // 5 minutos
+    nameKey: "subtests.visuospatial.name",
+    descriptionKey: "subtests.visuospatial.description",
+    duration: 300,
     component: VisuospatialSubtest,
   },
-  
-   {
+  {
     id: "verbal_memory_delayed",
-    name: "Memoria verbal — Recuerdo diferido",
-    description: "Tras el intervalo, escribe todas las palabras que recuerdes de la lista presentada antes.",
+    nameKey: "subtests.verbalMemoryDelayed.name",
+    descriptionKey: "subtests.verbalMemoryDelayed.description",
+    duration: 200,
     component: VerbalMemoryDelayedSubtest,
-    duration: 200
   },
   {
     id: "language-fluency",
-    name: "Lenguaje - Fluencia Verbal Semántica",
-    description: "Diga todas las palabras que pueda de la categoría indicada en 60 segundos.",
-    duration: 60, // 1 minuto
+    nameKey: "subtests.language.name",
+    descriptionKey: "subtests.language.description",
+    duration: 60,
     component: LanguageSubtest,
   }
 ]
